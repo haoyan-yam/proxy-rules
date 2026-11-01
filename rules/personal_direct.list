@@ -1,0 +1,27 @@
+# Roy 个人直连规则 —— Stash / Shadowrocket 共用
+# 格式：每行一条，不写策略；优先级最高（在代理和广告规则之前）
+# 微信
+DOMAIN-SUFFIX,weixin.qq.com
+DOMAIN-SUFFIX,weixin.qq.com.cn
+DOMAIN-SUFFIX,wxs.qq.com
+DOMAIN-SUFFIX,qpic.cn
+# 飞书 / Lark
+DOMAIN-SUFFIX,feishu.cn
+DOMAIN-SUFFIX,feishucdn.com
+DOMAIN-SUFFIX,larksuite.com
+DOMAIN-SUFFIX,larksuitecdn.com
+# 小红书
+DOMAIN-SUFFIX,xiaohongshu.com
+DOMAIN-SUFFIX,xhscdn.com
+# 豆包
+DOMAIN-SUFFIX,doubao.com
+# 客户 / 工作
+DOMAIN-SUFFIX,lvmhsh.cn
+DOMAIN-SUFFIX,adam.net
+# 电商
+DOMAIN-SUFFIX,amazon.cn
+# 远程控制
+DOMAIN-SUFFIX,todesk.com
+# IP 例外（原 Stash 规则保留）
+IP-CIDR,71.18.1.0/24,no-resolve
+IP-CIDR,43.135.63.118/32,no-resolve

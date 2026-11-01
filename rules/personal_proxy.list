@@ -1,0 +1,97 @@
+# Roy 个人代理规则 —— Stash / Shadowrocket 共用
+# 只放公共规则集（blackmatrix7 Global）没覆盖、或会被 China 规则误判为直连的条目
+
+# ---------- Meta（按 MetaCubeX geosite:meta 校对）----------
+DOMAIN-SUFFIX,meta.com
+DOMAIN-SUFFIX,meta.ai
+DOMAIN-SUFFIX,metaaivm.com
+DOMAIN-SUFFIX,metaaiusercontent.com
+DOMAIN-SUFFIX,atmeta.com
+DOMAIN-SUFFIX,llama.com
+DOMAIN-SUFFIX,llamameta.net
+DOMAIN-SUFFIX,muse.ai
+DOMAIN-SUFFIX,museai.com
+DOMAIN-SUFFIX,ecto1.ai
+DOMAIN-SUFFIX,facebook.com
+DOMAIN-SUFFIX,facebook.net
+DOMAIN-SUFFIX,fb.com
+DOMAIN-SUFFIX,fb.me
+DOMAIN-SUFFIX,fbcdn.net
+DOMAIN-SUFFIX,fbcdn.com
+DOMAIN-SUFFIX,fbsbx.com
+DOMAIN-SUFFIX,fbsbx.net
+DOMAIN,fbcdn-a.akamaihd.net
+DOMAIN,fbstatic-a.akamaihd.net
+DOMAIN-SUFFIX,instagram.com
+DOMAIN-SUFFIX,cdninstagram.com
+DOMAIN-SUFFIX,igcdn.com
+DOMAIN-SUFFIX,ig.me
+DOMAIN-SUFFIX,workplace.com
+# Meta ASN 32934
+IP-CIDR,157.240.0.0/16,no-resolve
+IP-CIDR,173.252.64.0/18,no-resolve
+IP-CIDR,179.60.192.0/22,no-resolve
+IP-CIDR,185.89.216.0/22,no-resolve
+IP-CIDR,204.15.20.0/22,no-resolve
+IP-CIDR,31.13.24.0/21,no-resolve
+IP-CIDR,31.13.64.0/18,no-resolve
+IP-CIDR,45.64.40.0/22,no-resolve
+IP-CIDR,66.220.144.0/20,no-resolve
+IP-CIDR,69.63.176.0/20,no-resolve
+IP-CIDR,69.171.224.0/19,no-resolve
+IP-CIDR,74.119.76.0/22,no-resolve
+
+# ---------- 富途 / moomoo ----------
+DOMAIN-SUFFIX,futunn.com
+DOMAIN-SUFFIX,futu5.com
+DOMAIN-SUFFIX,futuapi.com
+DOMAIN-SUFFIX,futuhn.com
+DOMAIN-SUFFIX,futuhk.com
+DOMAIN-SUFFIX,futufin.com
+DOMAIN-SUFFIX,fututrade.com
+DOMAIN-SUFFIX,futuesop.com
+DOMAIN-SUFFIX,futuin.com
+DOMAIN-SUFFIX,futuhk1.com
+DOMAIN-SUFFIX,futuhongkong.com
+DOMAIN-SUFFIX,moomoo.com
+DOMAIN-SUFFIX,futustatic.com
+DOMAIN-SUFFIX,qtlcdn.com
+# 富途 App 直连 IP 用的腾讯云段：no-resolve，只匹配直接按 IP 发起的连接
+IP-CIDR,1.12.0.0/14,no-resolve
+IP-CIDR,14.152.0.0/16,no-resolve
+IP-CIDR,42.192.0.0/14,no-resolve
+IP-CIDR,43.128.0.0/11,no-resolve
+IP-CIDR,43.168.0.0/16,no-resolve
+IP-CIDR,43.174.0.0/16,no-resolve
+IP-CIDR,49.51.0.0/16,no-resolve
+IP-CIDR,49.232.0.0/14,no-resolve
+IP-CIDR,101.32.0.0/15,no-resolve
+IP-CIDR,106.52.0.0/14,no-resolve
+IP-CIDR,111.230.0.0/15,no-resolve
+IP-CIDR,114.132.0.0/14,no-resolve
+IP-CIDR,118.24.0.0/14,no-resolve
+IP-CIDR,118.88.0.0/14,no-resolve
+IP-CIDR,119.28.0.0/15,no-resolve
+IP-CIDR,119.91.0.0/16,no-resolve
+IP-CIDR,119.147.0.0/16,no-resolve
+IP-CIDR,121.4.0.0/15,no-resolve
+IP-CIDR,124.156.0.0/16,no-resolve
+IP-CIDR,129.211.0.0/16,no-resolve
+IP-CIDR,129.226.0.0/16,no-resolve
+IP-CIDR,170.106.0.0/16,no-resolve
+IP-CIDR,175.178.0.0/16,no-resolve
+IP-CIDR,193.112.0.0/16,no-resolve
+
+# ---------- AI（补 blackmatrix7 Claude/OpenAI/Gemini 之外的）----------
+DOMAIN-SUFFIX,claude.com
+DOMAIN-SUFFIX,clau.de
+DOMAIN-SUFFIX,claudeusercontent.com
+# Microsoft Copilot：China 规则里有 KEYWORD microsoft→直连，必须在这里提前截住
+DOMAIN-SUFFIX,copilot.microsoft.com
+DOMAIN-SUFFIX,copilot.cloud.microsoft
+DOMAIN-SUFFIX,location.microsoft.com
+
+# ---------- 工具 / 开发 ----------
+DOMAIN-KEYWORD,datadoghq
+DOMAIN-SUFFIX,githubusercontent.com
+DOMAIN-SUFFIX,github.dev
