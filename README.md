@@ -12,7 +12,7 @@ Roy 的 Stash（桌面）与 Shadowrocket（手机）统一分流规则。两端
 | 4 | AdvertisingLite | 拦截 | blackmatrix7 |
 | 5 | OpenAI / Claude / Gemini | 代理 | blackmatrix7 |
 | 6 | Apple News | 代理 | blackmatrix7 |
-| 7 | Apple | 直连 | blackmatrix7 |
+| 7 | Apple | 🍎 苹果服务（默认直连，可切到代理） | blackmatrix7 |
 | 8 | Global | 代理 | blackmatrix7 |
 | 9 | China | 直连 | blackmatrix7 |
 | 10 | GEOIP CN | 直连 | — |
@@ -33,5 +33,15 @@ Roy 的 Stash（桌面）与 Shadowrocket（手机）统一分流规则。两端
 
 ## 客户端
 
-- **Shadowrocket**：配置 → 添加 `https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/shadowrocket.conf`，设为默认。节点在 SR 里单独管理，不在本仓库。
-- **Stash**：使用本地的完整配置（含节点，不入库）。它的 `rule-providers` 指向本仓库和 blackmatrix7，规则自动同步。
+两端都从本仓库拉规则，改一次两端同步：
+
+- **Shadowrocket**：配置 → 添加 `https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/shadowrocket.conf`，设为默认。整份配置走云端更新；节点在 SR 里单独管理。
+- **Stash**：本地导入基础配置（只含节点和基础策略组，不入库），再在「覆写」里从 URL 安装 `https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/stash.stoverride`。规则集、规则顺序和「🍎 苹果服务」策略组都来自覆写。
+
+## 改什么文件
+
+| 想改的 | 改哪里 | 两端同步方式 |
+|---|---|---|
+| 加/删某个域名 | `rules/personal_*.list` | 自动（规则集每 24 小时更新，也可以在客户端里手动更新） |
+| 规则顺序、换公共规则集、加策略组 | `shadowrocket.conf` + `stash.stoverride`（两份结构保持一致） | SR 更新配置；Stash 更新覆写 |
+| 节点 | 各客户端本地 | 不经过仓库 |
