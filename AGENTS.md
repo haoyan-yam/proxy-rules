@@ -24,7 +24,7 @@ tests.yaml                  分流回归测试
    - **不要手改** `shadowrocket.conf` 和 `stash.stoverride`，这两个是生成的
 2. 在 `tests.yaml` 里给这次改动加一条期望结果。
 3. 运行 `python3 scripts/check.py`，必须全部通过。
-4. commit 后 push 到 main。GitHub Actions 会再跑一遍校验，并刷新 jsDelivr 缓存。
+4. commit 后 push 到 main。提交作者邮箱用 `258898155+haoyan-yam@users.noreply.github.com`（本仓库是公开的，不要用真实邮箱）。GitHub Actions 会再跑一遍校验，并刷新 jsDelivr 缓存。
 5. 告诉 Roy 需要在哪一端点更新：
    - 只改了 `rules/*.list`：两端规则集每 24 小时自动更新，要立刻生效就在客户端里手动更新规则集
    - 改了 `rulesets.yaml`：SR 更新配置，Stash 更新覆写
