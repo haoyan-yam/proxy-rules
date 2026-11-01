@@ -18,6 +18,11 @@ Roy 的 Stash（桌面）与 Shadowrocket（手机）统一分流规则。两端
 | 10 | GEOIP CN | 直连 | — |
 | 11 | 其余 | 代理 | — |
 
+## 下载源
+
+- 本仓库文件走 jsDelivr（国内可直连，保证首次加载能拉到个人规则）。
+- blackmatrix7 规则走 raw.githubusercontent.com：jsDelivr 对超过 50MB 的仓库会返回 403。`githubusercontent.com` 已写进个人代理规则，所以这些更新会走代理。
+
 ## 日常维护
 
 - 只改 `rules/personal_direct.list` 和 `rules/personal_proxy.list`。每行一条，不写策略，IP 段加 `,no-resolve`。
