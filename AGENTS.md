@@ -6,14 +6,14 @@
 
 ```
 rulesets.yaml ──scripts/build.py──▶ shadowrocket.conf   （SR 订阅整份配置）
-                                └─▶ stash.stoverride    （Stash 覆写：规则集 + 规则 + 🍎 苹果服务组）
+                                └─▶ stash.stoverride    （Stash 覆写：规则集 + 规则）
 rules/personal_direct.list  个人直连（两端共用）
 rules/personal_proxy.list   个人代理（两端共用）
 tests.yaml                  分流回归测试
 ```
 
 - 公共规则集来自 blackmatrix7/ios_rule_script：SR 用 `rule/Shadowrocket/`，Stash 用 `rule/Clash/`，两者内容同源。
-- Stash 的节点和基础策略组（🚀 节点选择 / 🎯 全球直连 / 🛑 广告拦截 / 🐟 漏网之鱼）在 Roy 本地的基础配置里，**不在本仓库**。基础配置的规则只有 `MATCH,🐟 漏网之鱼` 一条，覆写里的规则会插到它前面。
+- Stash 的节点和全部策略组（🚀 节点选择 / 🎯 全球直连 / 🍎 苹果服务 / 🛑 广告拦截 / 🐟 漏网之鱼）在 Roy 本地的基础配置里，**不在本仓库**。覆写里**不要**定义 proxy-groups：Stash 会报 duplicate proxy name。需要新增策略组时，让 Roy 在本地基础配置里加，SR 那边在 build.py 的 [Proxy Group] 里加。基础配置的规则只有 `MATCH,🐟 漏网之鱼` 一条，覆写里的规则会插到它前面。
 - 本仓库文件走 jsDelivr（国内可直连），blackmatrix7 走 raw.githubusercontent.com（jsDelivr 对超过 50MB 的仓库返回 403；`githubusercontent.com` 已经在个人代理规则里）。
 
 ## 改动流程
@@ -24,7 +24,7 @@ tests.yaml                  分流回归测试
    - **不要手改** `shadowrocket.conf` 和 `stash.stoverride`，这两个是生成的
 2. 在 `tests.yaml` 里给这次改动加一条期望结果。
 3. 运行 `python3 scripts/check.py`，必须全部通过。
-4. commit 后 push 到 main。提交作者邮箱用 `258898155+haoyan-yam@users.noreply.github.com`（本仓库是公开的，不要用真实邮箱）。GitHub Actions 会再跑一遍校验，并刷新 jsDelivr 缓存。
+4. commit 后 push 到 main。GitHub Actions 会再跑一遍校验，并刷新 jsDelivr 缓存。
 5. 告诉 Roy 需要在哪一端点更新：
    - 只改了 `rules/*.list`：两端规则集每 24 小时自动更新，要立刻生效就在客户端里手动更新规则集
    - 改了 `rulesets.yaml`：SR 更新配置，Stash 更新覆写

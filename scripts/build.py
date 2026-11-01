@@ -45,8 +45,8 @@ def main():
     st = [hdr, 'name: Roy 统一分流规则',
           'desc: 与 Shadowrocket 共用同一套规则源 · github.com/haoyan-yam/proxy-rules',
           f'# 规则顺序：{order}', '',
-          'proxy-groups: #!append', '  - name: 🍎 苹果服务', '    type: select',
-          '    proxies:', '      - 🎯 全球直连', '      - 🚀 节点选择', '', 'rule-providers:']
+          '# 注意：🍎 苹果服务 策略组定义在本地基础配置里，覆写只放规则（覆写里加策略组会导致 duplicate proxy name）',
+          'rule-providers:']
     for r in cfg:
         for _, _, sid, beh, fmt, u in sources(r):
             st += [f'  {sid}:', f'    behavior: {beh}', f'    format: {fmt}', f'    url: {u}', '    interval: 86400']

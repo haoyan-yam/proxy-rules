@@ -4,13 +4,7 @@ name: Roy 统一分流规则
 desc: 与 Shadowrocket 共用同一套规则源 · github.com/haoyan-yam/proxy-rules
 # 规则顺序：局域网 → 个人直连 → 个人代理 → OpenAI → Claude → Gemini → Apple News → Apple → 海外常用 → 国内 → GEOIP CN 直连 → 其余走代理
 
-proxy-groups: #!append
-  - name: 🍎 苹果服务
-    type: select
-    proxies:
-      - 🎯 全球直连
-      - 🚀 节点选择
-
+# 注意：🍎 苹果服务 策略组定义在本地基础配置里，覆写只放规则（覆写里加策略组会导致 duplicate proxy name）
 rule-providers:
   lan:
     behavior: classical
