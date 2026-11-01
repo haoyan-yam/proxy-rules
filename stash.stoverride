@@ -1,6 +1,6 @@
 name: Roy 统一分流规则
 desc: 与 Shadowrocket 共用同一套规则源 · github.com/haoyan-yam/proxy-rules
-# 规则顺序（两端一致）：Lan → 个人直连 → 个人代理 → 广告拦截 → AI → Apple News → Apple → 海外常用 → 国内 → GEOIP CN 直连 → 其余走代理
+# 规则顺序（两端一致）：Lan → 个人直连 → 个人代理 → AI → Apple News → Apple → 海外常用 → 国内 → GEOIP CN 直连 → 其余走代理
 
 proxy-groups: #!append
   - name: 🍎 苹果服务
@@ -24,16 +24,6 @@ rule-providers:
     behavior: classical
     format: text
     url: https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/rules/personal_proxy.list
-    interval: 86400
-  ad_domain:
-    behavior: domain
-    format: yaml
-    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/AdvertisingLite/AdvertisingLite_Domain.yaml
-    interval: 86400
-  ad:
-    behavior: classical
-    format: yaml
-    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/AdvertisingLite/AdvertisingLite_No_Resolve.yaml
     interval: 86400
   openai:
     behavior: classical
@@ -94,9 +84,6 @@ rules:
   - RULE-SET,personal_direct,🎯 全球直连
   # 个人代理
   - RULE-SET,personal_proxy,🚀 节点选择
-  # 广告拦截
-  - RULE-SET,ad_domain,🛑 广告拦截
-  - RULE-SET,ad,🛑 广告拦截
   # AI
   - RULE-SET,openai,🚀 节点选择
   - RULE-SET,claude,🚀 节点选择

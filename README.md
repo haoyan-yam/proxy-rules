@@ -9,14 +9,13 @@ Roy 的 Stash（桌面）与 Shadowrocket（手机）统一分流规则。两端
 | 1 | Lan | 直连 | blackmatrix7 |
 | 2 | 个人直连 `rules/personal_direct.list` | 直连 | 本仓库 |
 | 3 | 个人代理 `rules/personal_proxy.list` | 代理 | 本仓库 |
-| 4 | AdvertisingLite | 拦截 | blackmatrix7 |
-| 5 | OpenAI / Claude / Gemini | 代理 | blackmatrix7 |
-| 6 | Apple News | 代理 | blackmatrix7 |
-| 7 | Apple | 🍎 苹果服务（默认直连，可切到代理） | blackmatrix7 |
-| 8 | Global | 代理 | blackmatrix7 |
-| 9 | China | 直连 | blackmatrix7 |
-| 10 | GEOIP CN | 直连 | — |
-| 11 | 其余 | 代理 | — |
+| 4 | OpenAI / Claude / Gemini | 代理 | blackmatrix7 |
+| 5 | Apple News | 代理 | blackmatrix7 |
+| 6 | Apple | 🍎 苹果服务（默认直连，可切到代理） | blackmatrix7 |
+| 7 | Global | 代理 | blackmatrix7 |
+| 8 | China | 直连 | blackmatrix7 |
+| 9 | GEOIP CN | 直连 | — |
+| 10 | 其余 | 代理 | — |
 
 ## 下载源
 
