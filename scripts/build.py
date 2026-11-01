@@ -45,16 +45,17 @@ def main():
     st = [hdr, 'name: Roy 统一分流规则',
           'desc: 与 Shadowrocket 共用同一套规则源 · github.com/haoyan-yam/proxy-rules',
           f'# 规则顺序：{order}', '',
-          '# 注意：🍎 苹果服务 策略组定义在本地基础配置里，覆写只放规则（覆写里加策略组会导致 duplicate proxy name）',
+          '# 注意：覆写不定义策略组。基础配置（VIRCS 自建 / WgetCloud 等机场订阅）里已有同名组，重复定义会报 duplicate proxy name',
           'rule-providers:']
     for r in cfg:
         for _, _, sid, beh, fmt, u in sources(r):
             st += [f'  {sid}:', f'    behavior: {beh}', f'    format: {fmt}', f'    url: {u}', '    interval: 86400']
-    st += ['', '# 默认插到本地基础配置的规则之前；基础配置里只有 MATCH,🐟 漏网之鱼', 'rules:']
+    st += ['', '# 覆写的规则会插到基础配置的规则之前，并以 MATCH 结尾：基础配置自带的规则（比如机场订阅里的上万条）不会再生效',
+           '# 基础配置必须定义这 4 个策略组：🚀 节点选择 / 🎯 全球直连 / 🍎 苹果服务 / 🐟 漏网之鱼', 'rules:']
     for r in cfg:
         st.append(f"  # {r['label']}")
         st += [f'  - RULE-SET,{sid},{ST_POL[r["policy"]]}' for _, _, sid, *_ in sources(r)]
-    st += ['  # 兜底（MATCH 在本地基础配置里）', '  - GEOIP,CN,🎯 全球直连', '']
+    st += ['  # 兜底', '  - GEOIP,CN,🎯 全球直连', '  - MATCH,🐟 漏网之鱼', '']
     (ROOT / 'stash.stoverride').write_text('\n'.join(st))
     print('built: shadowrocket.conf, stash.stoverride')
 

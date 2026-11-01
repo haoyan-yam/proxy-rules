@@ -35,7 +35,7 @@ Roy 的 Stash（桌面）与 Shadowrocket（手机）统一分流规则。两端
 两端都从本仓库拉规则，改一次两端同步：
 
 - **Shadowrocket**：配置 → 添加 `https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/shadowrocket.conf`，设为默认。整份配置走云端更新；节点在 SR 里单独管理。
-- **Stash**：本地导入基础配置（只含节点和基础策略组，不入库），再在「覆写」里从 URL 安装 `https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/stash.stoverride`。规则集和规则顺序来自覆写；策略组（含「🍎 苹果服务」）在本地基础配置里。
+- **Stash**：任意基础配置（自建 VIRCS 配置或 WgetCloud 等机场订阅）+ 在「覆写」里从 URL 安装 `https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/stash.stoverride`。覆写接管全部分流规则，基础配置只提供节点和 4 个策略组（🚀 节点选择 / 🎯 全球直连 / 🍎 苹果服务 / 🐟 漏网之鱼）。换机场不用改仓库。
 
 ## 改什么文件
 

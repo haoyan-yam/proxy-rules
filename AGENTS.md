@@ -13,7 +13,9 @@ tests.yaml                  分流回归测试
 ```
 
 - 公共规则集来自 blackmatrix7/ios_rule_script：SR 用 `rule/Shadowrocket/`，Stash 用 `rule/Clash/`，两者内容同源。
-- Stash 的节点和全部策略组（🚀 节点选择 / 🎯 全球直连 / 🍎 苹果服务 / 🛑 广告拦截 / 🐟 漏网之鱼）在 Roy 本地的基础配置里，**不在本仓库**。覆写里**不要**定义 proxy-groups：Stash 会报 duplicate proxy name。需要新增策略组时，让 Roy 在本地基础配置里加，SR 那边在 build.py 的 [Proxy Group] 里加。基础配置的规则只有 `MATCH,🐟 漏网之鱼` 一条，覆写里的规则会插到它前面。
+- Stash 的节点和全部策略组在 Roy 本地的基础配置里，**不在本仓库**。基础配置可能是自建的 VIRCS 配置，也可能是机场订阅（比如 WgetCloud，ACL4SSR 风格，有自己的上万条规则）。覆写对基础配置的唯一要求：必须有 `🚀 节点选择`、`🎯 全球直连`、`🍎 苹果服务`、`🐟 漏网之鱼` 这 4 个策略组。
+- 覆写**不要**定义 proxy-groups：WgetCloud 自带「🍎 苹果服务」，重复定义会报 duplicate proxy name。
+- 覆写的规则会插到基础配置规则的前面，并且以 `MATCH,🐟 漏网之鱼` 结尾，所以基础配置自带的规则永远不会被用到。换机场、换基础配置都不影响分流结果。
 - 本仓库文件走 jsDelivr（国内可直连），blackmatrix7 走 raw.githubusercontent.com（jsDelivr 对超过 50MB 的仓库返回 403；`githubusercontent.com` 已经在个人代理规则里）。
 
 ## 改动流程
