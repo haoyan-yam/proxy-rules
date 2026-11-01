@@ -1,0 +1,20 @@
+# 唯一的结构定义：规则顺序、规则集来源、策略。
+# shadowrocket.conf 和 stash.stoverride 都由 scripts/build.py 从这里生成，不要手改这两个文件。
+#
+# policy 取值：proxy / direct / reject / apple（🍎 苹果服务，可切换）
+# source：personal = 本仓库 rules/<name>.list；bm = blackmatrix7/ios_rule_script 的 <name> 目录
+# domain_set：true 表示该规则集同时引用 *_Domain 大列表（DOMAIN-SET / behavior: domain）
+
+rulesets:
+  - {label: 局域网,        source: bm,       name: Lan,          policy: direct}
+  - {label: 个人直连,      source: personal, name: personal_direct, policy: direct}
+  - {label: 个人代理,      source: personal, name: personal_proxy,  policy: proxy}
+  - {label: OpenAI,        source: bm,       name: OpenAI,       policy: proxy}
+  - {label: Claude,        source: bm,       name: Claude,       policy: proxy}
+  - {label: Gemini,        source: bm,       name: Gemini,       policy: proxy}
+  - {label: Apple News,    source: bm,       name: AppleNews,    policy: proxy}
+  - {label: Apple,         source: bm,       name: Apple,        policy: apple, domain_set: true}
+  - {label: 海外常用,      source: bm,       name: Global,       policy: proxy, domain_set: true}
+  - {label: 国内,          source: bm,       name: China,        policy: direct, domain_set: true}
+
+# 兜底（固定）：GEOIP,CN → 直连；其余 → 代理

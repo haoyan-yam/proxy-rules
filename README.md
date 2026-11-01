@@ -25,7 +25,7 @@ Roy 的 Stash（桌面）与 Shadowrocket（手机）统一分流规则。两端
 ## 日常维护
 
 - 只改 `rules/personal_direct.list` 和 `rules/personal_proxy.list`。每行一条，不写策略，IP 段加 `,no-resolve`。
-- 推送后 jsDelivr 有缓存（最长 12 小时）。要立即生效，打开下面的地址刷新缓存，再在客户端里更新规则：
+- 推送后 GitHub Actions 会自动刷新 jsDelivr 缓存。如果 Actions 没跑，可以手动打开下面的地址刷新：
   - https://purge.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/rules/personal_direct.list
   - https://purge.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/rules/personal_proxy.list
   - https://purge.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/shadowrocket.conf
@@ -39,8 +39,10 @@ Roy 的 Stash（桌面）与 Shadowrocket（手机）统一分流规则。两端
 
 ## 改什么文件
 
-| 想改的 | 改哪里 | 两端同步方式 |
+| 想改的 | 改哪里 | 之后 |
 |---|---|---|
-| 加/删某个域名 | `rules/personal_*.list` | 自动（规则集每 24 小时更新，也可以在客户端里手动更新） |
-| 规则顺序、换公共规则集、加策略组 | `shadowrocket.conf` + `stash.stoverride`（两份结构保持一致） | SR 更新配置；Stash 更新覆写 |
+| 加/删某个域名、IP | `rules/personal_*.list` | `python3 scripts/check.py`，然后 push |
+| 规则顺序、公共规则集、策略 | `rulesets.yaml` | `python3 scripts/build.py`，再 `check.py`，然后 push |
 | 节点 | 各客户端本地 | 不经过仓库 |
+
+push 后 GitHub Actions 会自动校验并刷新 jsDelivr 缓存。完整约定见 [AGENTS.md](AGENTS.md)。

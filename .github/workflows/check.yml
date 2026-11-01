@@ -1,0 +1,25 @@
+name: check-and-publish
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 1 * * 1'   # 每周一 09:17（北京时间）检查一次上游规则集是否还能访问、测试是否仍通过
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pyyaml
+      - run: python3 scripts/check.py
+      - name: Purge jsDelivr cache
+        if: github.event_name == 'push'
+        run: |
+          for f in shadowrocket.conf stash.stoverride rules/personal_direct.list rules/personal_proxy.list; do
+            curl -fsS "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/$f" > /dev/null && echo "purged $f"
+          done

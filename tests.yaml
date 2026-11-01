@@ -1,0 +1,30 @@
+# 分流回归测试：域名 → 期望策略（proxy / direct / apple / fallback）
+# fallback = 没命中任何规则集，按 GEOIP 兜底（国内 IP 直连，否则代理）
+# 改规则后运行 scripts/check.py，这里任何一条不符都会报错
+www.facebook.com: proxy
+scontent.xx.metaaiusercontent.com: proxy
+meta.ai: proxy
+www.instagram.com: proxy
+claude.ai: proxy
+claude.com: proxy
+api.anthropic.com: proxy
+chatgpt.com: proxy
+gemini.google.com: proxy
+www.google.com: proxy
+www.youtube.com: proxy
+github.com: proxy
+raw.githubusercontent.com: proxy
+copilot.microsoft.com: proxy
+www.futunn.com: proxy
+mp.weixin.qq.com: direct
+www.feishu.cn: direct
+edith.xiaohongshu.com: direct
+www.doubao.com: direct
+www.taobao.com: direct
+www.baidu.com: direct
+www.bilibili.com: direct
+www.amazon.cn: direct
+www.sephora.cn: direct
+www.apple.com: apple
+p52-content.icloud.com: apple
+apps.apple.com: apple
