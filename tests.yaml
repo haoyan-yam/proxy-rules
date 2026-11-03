@@ -18,6 +18,9 @@ copilot.microsoft.com: proxy
 www.futunn.com: proxy
 mp.weixin.qq.com: direct
 www.feishu.cn: direct
+open.feishu.cn: direct
+sf3-cn.feishucdn.com: direct
+lf-package-cn.feishucdn.com: direct
 edith.xiaohongshu.com: direct
 www.doubao.com: direct
 www.taobao.com: direct

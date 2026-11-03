@@ -2,11 +2,13 @@
 
 本仓库是 Roy 的 Stash（Mac）和 Shadowrocket（iPhone）共用的分流规则。两端从这里拉规则，任何改动都会同时影响两台设备。
 
+处理本项目任务前，先读取并遵循：`~/.codex/AGENTS.md`（若该设备存在此文件）。业务规则两端共用；`stash_dns` 只影响 Stash，不得据此修改 Shadowrocket DNS。
+
 ## 架构
 
 ```
 rulesets.yaml ──scripts/build.py──▶ shadowrocket.conf   （SR 订阅整份配置）
-                                └─▶ stash.stoverride    （Stash 覆写：规则集 + 规则）
+                                └─▶ stash.stoverride    （Stash 覆写：DNS + 规则集 + 规则）
 rules/personal_direct.list  个人直连（两端共用）
 rules/personal_proxy.list   个人代理（两端共用）
 tests.yaml                  分流回归测试
@@ -16,6 +18,9 @@ tests.yaml                  分流回归测试
 - Stash 的节点和全部策略组在 Roy 本地的基础配置里，**不在本仓库**。基础配置可能是自建的 VIRCS 配置，也可能是机场订阅（比如 WgetCloud，ACL4SSR 风格，有自己的上万条规则）。覆写对基础配置的唯一要求：必须有 `🚀 节点选择`、`🎯 全球直连`、`🍎 苹果服务`、`🐟 漏网之鱼` 这 4 个策略组。
 - 覆写**不要**定义 proxy-groups：WgetCloud 自带「🍎 苹果服务」，重复定义会报 duplicate proxy name。
 - 覆写的规则会插到基础配置规则的前面，并且以 `MATCH,🐟 漏网之鱼` 结尾，所以基础配置自带的规则永远不会被用到。换机场、换基础配置都不影响分流结果。
+- Stash 专用 DNS 在 `rulesets.yaml` 的 `stash_dns` 定义，生成器将 DNS IP 规则放到最前；`nameserver` 必须保留 `#!replace`。不定义节点和策略组，不把引导 DNS 强制走代理。
+- 当前明确选择所有常规 DNS 经代理，包括国内域名；国内 CDN 可能变慢。后续如改为国内/国外 DNS 分流，必须作为独立行为变更说明，不能在维护规则时悄悄引入。
+- 更换基础配置仍需检查继承的 DNS policy/fallback/bootstrap 等，不能保证任意基础配置均无 DNS 泄露。升级、限制和回退见 README。
 - 本仓库文件走 jsDelivr（国内可直连），blackmatrix7 走 raw.githubusercontent.com（jsDelivr 对超过 50MB 的仓库返回 403；`githubusercontent.com` 已经在个人代理规则里）。
 
 ## 改动流程
@@ -23,6 +28,7 @@ tests.yaml                  分流回归测试
 1. 判断改哪里：
    - 某个域名或 IP 该直连还是该代理 → 改 `rules/personal_direct.list` 或 `rules/personal_proxy.list`
    - 加减公共规则集、调整顺序、改策略 → 改 `rulesets.yaml`，然后运行 `python3 scripts/build.py`
+   - Stash DNS → 改 `rulesets.yaml` 的 `stash_dns` / `scripts/build.py`，同步 README 与 `check.py` 的 DNS 回归期望；保持 Shadowrocket 输出不变
    - **不要手改** `shadowrocket.conf` 和 `stash.stoverride`，这两个是生成的
 2. 在 `tests.yaml` 里给这次改动加一条期望结果。
 3. 运行 `python3 scripts/check.py`，必须全部通过。

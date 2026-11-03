@@ -23,6 +23,30 @@ for f, txt in before.items():
         err(f'{f} 与 rulesets.yaml 不一致（已重新生成，请一并提交）')
 ok('生成文件检查完成')
 
+# DNS 合并回归：普通 YAML 解析会丢弃 #!replace，必须同时检查原文。
+st_text = (ROOT / 'stash.stoverride').read_text()
+st = yaml.safe_load(st_text)
+expected_servers = ['https://1.1.1.1/dns-query', 'https://1.0.0.1/dns-query']
+expected_dns_rules = ['IP-CIDR,1.1.1.1/32,🚀 节点选择,no-resolve',
+                      'IP-CIDR,1.0.0.1/32,🚀 节点选择,no-resolve']
+dns = st.get('dns', {})
+if (dns.get('nameserver') != expected_servers or dns.get('follow-rule') is not True
+        or dns.get('skip-cert-verify') is not False):
+    err('Stash DNS 必须使用约定的 Cloudflare DoH、跟随规则并验证证书')
+if '  nameserver: #!replace' not in st_text.splitlines():
+    err('Stash nameserver 必须完全替换基础配置，不能与原 DNS 并发混用')
+if st.get('rules', [])[:2] != expected_dns_rules:
+    err('Stash DNS IP 规则必须排在最前，且带 no-resolve')
+if 'proxy-groups' in st or 'proxies' in st:
+    err('Stash 覆写不能定义节点或策略组')
+if st['rules'][-1] != 'MATCH,🐟 漏网之鱼':
+    err('Stash 必须保留 MATCH 兜底规则')
+sr_text = (ROOT / 'shadowrocket.conf').read_text()
+if ('dns-server = https://dns.alidns.com/dns-query, https://doh.pub/dns-query' not in sr_text.splitlines()
+        or 'fallback-dns-server = system' not in sr_text.splitlines()):
+    err('此次 Stash DNS 合并不得改变 Shadowrocket 的 DNS')
+ok('Stash DNS 合并检查完成')
+
 # 2. 个人规则语法
 TYPES = {'DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD', 'IP-CIDR', 'IP-CIDR6'}
 seen = {}

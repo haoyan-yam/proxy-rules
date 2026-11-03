@@ -1,8 +1,18 @@
 # 自动生成：改 rulesets.yaml 后运行 scripts/build.py，不要手改本文件
 
 name: Roy 统一分流规则
-desc: 与 Shadowrocket 共用同一套规则源 · github.com/haoyan-yam/proxy-rules
-# 规则顺序：局域网 → 个人直连 → 个人代理 → OpenAI → Claude → Gemini → Apple News → Apple → 海外常用 → 国内 → GEOIP CN 直连 → 其余走代理
+desc: 统一分流 + Cloudflare DNS 经节点选择（含国内域名）；国内 CDN 可能变慢，更新前阅读仓库 README
+# DNS 行为仅适用于 Stash；Shadowrocket 继续使用原有 DNS。
+# 合并版启用后关闭旧的「Roy DNS 经代理」本地覆写，避免重复。
+# 常规 DNS 走当前选中节点，不固定国家；国内网站连接仍按下方规则分流。
+dns:
+  follow-rule: true
+  skip-cert-verify: false
+  nameserver: #!replace
+    - https://1.1.1.1/dns-query
+    - https://1.0.0.1/dns-query
+
+# 规则顺序：DNS 服务器 IP 经代理 → 局域网 → 个人直连 → 个人代理 → OpenAI → Claude → Gemini → Apple News → Apple → 海外常用 → 国内 → GEOIP CN 直连 → 其余走代理
 
 # 注意：覆写不定义策略组。基础配置（VIRCS 自建 / WgetCloud 等机场订阅）里已有同名组，重复定义会报 duplicate proxy name
 rule-providers:
@@ -75,6 +85,9 @@ rule-providers:
 # 覆写的规则会插到基础配置的规则之前，并以 MATCH 结尾：基础配置自带的规则（比如机场订阅里的上万条）不会再生效
 # 基础配置必须定义这 4 个策略组：🚀 节点选择 / 🎯 全球直连 / 🍎 苹果服务 / 🐟 漏网之鱼
 rules:
+  # 必须先于所有业务规则和 MATCH，确保 DNS 不依赖兜底组选择
+  - IP-CIDR,1.1.1.1/32,🚀 节点选择,no-resolve
+  - IP-CIDR,1.0.0.1/32,🚀 节点选择,no-resolve
   # 局域网
   - RULE-SET,lan,🎯 全球直连
   # 个人直连
