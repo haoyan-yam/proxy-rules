@@ -5,8 +5,13 @@
 # source：personal = 本仓库 rules/<name>.list；bm = blackmatrix7/ios_rule_script 的 <name> 目录
 # domain_set：true 表示该规则集同时引用 *_Domain 大列表（DOMAIN-SET / behavior: domain）
 
-# 仅影响 Stash；不改变 Shadowrocket 的 DNS。
-# 常规 DNS 全部经「🚀 节点选择」，包括国内域名；可能影响国内 CDN 速度。
+# 两端直连域名共用国内加密 DNS；使用 IP 地址避免引导查询。
+direct_dns:
+  nameservers:
+    - https://223.5.5.5/dns-query
+    - https://223.6.6.6/dns-query
+
+# Stash 默认 DNS 经「🚀 节点选择」；域名 policy 按业务规则顺序生成。
 # 仅允许 HTTPS + IP 地址，避免解析 DNS 服务器域名产生循环依赖。
 stash_dns:
   nameservers:
@@ -14,7 +19,7 @@ stash_dns:
     - https://1.0.0.1/dns-query
 
 # Shadowrocket 2.2.93 目标配置；待 iOS/iPadOS 实机验收。
-# 生成器给常规/直连/备用 DNS 加 #proxy，跟随首页所选节点。
+# 默认/备用 DNS 加 #proxy；直连 DNS 使用上方 direct_dns，不加 #proxy。
 # 节点域名独立使用国内 IP 形式 DoH 引导，不经代理，避免循环。
 shadowrocket_dns:
   nameservers:

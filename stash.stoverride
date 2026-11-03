@@ -1,18 +1,62 @@
 # 自动生成：改 rulesets.yaml 后运行 scripts/build.py，不要手改本文件
 
 name: Roy 统一分流规则
-desc: 统一分流 + Cloudflare DNS 经节点选择（含国内域名）；国内 CDN 可能变慢，更新前阅读仓库 README
+desc: 统一分流 + 直连域名国内 DoH / 默认 Cloudflare 经代理；升级与策略组切换限制见 README
 # 此文件仅供 Stash；Shadowrocket 的 DNS 在 shadowrocket.conf 中单独生成。
 # 合并版启用后关闭旧的「Roy DNS 经代理」本地覆写，避免重复。
-# 常规 DNS 走当前选中节点，不固定国家；国内网站连接仍按下方规则分流。
+# DNS policy 按域名规则顺序匹配；Apple 按默认直连处理，不跟随策略组手动切换。
 dns:
   follow-rule: true
   skip-cert-verify: false
   nameserver: #!replace
     - https://1.1.1.1/dns-query
     - https://1.0.0.1/dns-query
+  # 清除基础配置的并发 fallback，避免旁路查询。
+  fallback: #!replace
+    []
+  # 完全替换旧 policy，防止继承的精确域名策略优先于本仓库集合。
+  nameserver-policy: #!replace
+    'rule-set:lan':
+      - https://223.5.5.5/dns-query
+      - https://223.6.6.6/dns-query
+    'rule-set:personal_direct':
+      - https://223.5.5.5/dns-query
+      - https://223.6.6.6/dns-query
+    'rule-set:personal_proxy':
+      - https://1.1.1.1/dns-query
+      - https://1.0.0.1/dns-query
+    'rule-set:openai':
+      - https://1.1.1.1/dns-query
+      - https://1.0.0.1/dns-query
+    'rule-set:claude':
+      - https://1.1.1.1/dns-query
+      - https://1.0.0.1/dns-query
+    'rule-set:gemini':
+      - https://1.1.1.1/dns-query
+      - https://1.0.0.1/dns-query
+    'rule-set:applenews':
+      - https://1.1.1.1/dns-query
+      - https://1.0.0.1/dns-query
+    'rule-set:apple_domain':
+      - https://223.5.5.5/dns-query
+      - https://223.6.6.6/dns-query
+    'rule-set:apple':
+      - https://223.5.5.5/dns-query
+      - https://223.6.6.6/dns-query
+    'rule-set:global_domain':
+      - https://1.1.1.1/dns-query
+      - https://1.0.0.1/dns-query
+    'rule-set:global':
+      - https://1.1.1.1/dns-query
+      - https://1.0.0.1/dns-query
+    'rule-set:china_domain':
+      - https://223.5.5.5/dns-query
+      - https://223.6.6.6/dns-query
+    'rule-set:china':
+      - https://223.5.5.5/dns-query
+      - https://223.6.6.6/dns-query
 
-# 规则顺序：DNS 服务器 IP 经代理 → 局域网 → 个人直连 → 个人代理 → OpenAI → Claude → Gemini → Apple News → Apple → 海外常用 → 国内 → GEOIP CN 直连 → 其余走代理
+# 规则顺序：DNS 服务器 IP 指定出口 → 局域网 → 个人直连 → 个人代理 → OpenAI → Claude → Gemini → Apple News → Apple → 海外常用 → 国内 → GEOIP CN 直连 → 其余走代理
 
 # 注意：覆写不定义策略组。基础配置（VIRCS 自建 / WgetCloud 等机场订阅）里已有同名组，重复定义会报 duplicate proxy name
 rule-providers:
@@ -88,6 +132,8 @@ rules:
   # 必须先于所有业务规则和 MATCH，确保 DNS 不依赖兜底组选择
   - IP-CIDR,1.1.1.1/32,🚀 节点选择,no-resolve
   - IP-CIDR,1.0.0.1/32,🚀 节点选择,no-resolve
+  - IP-CIDR,223.5.5.5/32,DIRECT,no-resolve
+  - IP-CIDR,223.6.6.6/32,DIRECT,no-resolve
   # 局域网
   - RULE-SET,lan,🎯 全球直连
   # 个人直连

@@ -1,0 +1,19 @@
+# Stash 实际域名规则源 + policy 的预期解析器；Shadowrocket 字段另由 check.py 验证。
+www.feishu.cn: domestic
+open.feishu.cn: domestic
+s1-imfile.feishucdn.com: domestic
+s3-imfile.feishucdn.com: domestic
+sf3-cn.feishucdn.com: domestic
+lf-package-cn.feishucdn.com: domestic
+www.amazon.cn: domestic
+www.baidu.com: domestic
+www.taobao.com: domestic
+www.apple.com: domestic
+apps.apple.com: domestic
+chatgpt.com: cloudflare
+api.openai.com: cloudflare
+claude.ai: cloudflare
+gemini.google.com: cloudflare
+www.google.com: cloudflare
+raw.githubusercontent.com: cloudflare
+dns-policy-unmatched.invalid: cloudflare
