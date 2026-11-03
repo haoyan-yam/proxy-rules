@@ -8,6 +8,7 @@ www.instagram.com: proxy
 claude.ai: proxy
 claude.com: proxy
 api.anthropic.com: proxy
+api.openai.com: proxy
 chatgpt.com: proxy
 gemini.google.com: proxy
 www.google.com: proxy
@@ -20,6 +21,7 @@ mp.weixin.qq.com: direct
 www.feishu.cn: direct
 open.feishu.cn: direct
 sf3-cn.feishucdn.com: direct
+s3-imfile.feishucdn.com: direct
 lf-package-cn.feishucdn.com: direct
 edith.xiaohongshu.com: direct
 www.doubao.com: direct

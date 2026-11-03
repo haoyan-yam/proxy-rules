@@ -2,7 +2,7 @@
 
 name: Roy 统一分流规则
 desc: 统一分流 + Cloudflare DNS 经节点选择（含国内域名）；国内 CDN 可能变慢，更新前阅读仓库 README
-# DNS 行为仅适用于 Stash；Shadowrocket 继续使用原有 DNS。
+# 此文件仅供 Stash；Shadowrocket 的 DNS 在 shadowrocket.conf 中单独生成。
 # 合并版启用后关闭旧的「Roy DNS 经代理」本地覆写，避免重复。
 # 常规 DNS 走当前选中节点，不固定国家；国内网站连接仍按下方规则分流。
 dns:

@@ -24,29 +24,49 @@ def sources(rs):
                 n.lower(), 'classical', 'yaml', f'{BM}/Clash/{n}/{n}_No_Resolve.yaml'))
     return out
 
+def validate_doh(servers, label):
+    if not isinstance(servers, list) or not servers or len(servers) != len(set(servers)):
+        raise ValueError(f'{label} 必须为非空且不重复的列表')
+    for server in servers:
+        url = urlsplit(server)
+        if (url.scheme != 'https' or url.username or url.password or not url.path
+                or url.query or url.fragment):
+            raise ValueError(f'{label} 必须使用不含凭证、查询参数或片段的 HTTPS URL')
+        ip_address(url.hostname)  # 必须为 IP，不能依赖 DNS 解析自身
+
 def main():
     settings = yaml.safe_load((ROOT / 'rulesets.yaml').read_text())
     cfg = settings['rulesets']
     dns_servers = settings['stash_dns']['nameservers']
-    if not dns_servers or len(dns_servers) != len(set(dns_servers)):
-        raise ValueError('stash_dns.nameservers 不能为空或重复')
+    validate_doh(dns_servers, 'stash_dns.nameservers')
+    sr_dns = settings['shadowrocket_dns']
+    validate_doh(sr_dns['nameservers'], 'shadowrocket_dns.nameservers')
+    validate_doh(sr_dns['node_nameservers'], 'shadowrocket_dns.node_nameservers')
+    sr_upstream = ', '.join(f'{server}#proxy' for server in sr_dns['nameservers'])
+    sr_bootstrap = ', '.join(sr_dns['node_nameservers'])
     dns_rules = []
     for server in dns_servers:
-        url = urlsplit(server)
-        if url.scheme != 'https' or url.username or url.password or not url.path:
-            raise ValueError('Stash DNS 必须使用不含凭证的 HTTPS URL')
-        ip = ip_address(url.hostname)  # 必须为 IP，不能依赖 DNS 解析自身
+        ip = ip_address(urlsplit(server).hostname)
         kind = 'IP-CIDR' if ip.version == 4 else 'IP-CIDR6'
         dns_rules.append(f'{kind},{ip}/{ip.max_prefixlen},🚀 节点选择,no-resolve')
     order = ' → '.join(r['label'] for r in cfg) + ' → GEOIP CN 直连 → 其余走代理'
     hdr = '# 自动生成：改 rulesets.yaml 后运行 scripts/build.py，不要手改本文件\n'
 
-    sr = [hdr, f'# 规则顺序：{order}', '[General]',
+    sr = [hdr, '# 目标客户端：Shadowrocket 2.2.93（iOS/iPadOS）；需在设备更新后验收。',
+          '# DNS-over-PROXY：常规/直连/备用 DNS 经首页所选节点；国内 CDN 可能变慢。',
+          '# 代理域名仍保留远端解析；节点域名单独使用 AliDNS 引导。升级/回退见 README。',
+          f'# 规则顺序：{order}', '[General]',
           'ipv6 = false', 'bypass-system = true',
           'skip-proxy = 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, fe80::/10, fc00::/7, localhost, *.local, *.lan, *.internal, e.crashlytics.com, captive.apple.com, sequoia.apple.com, seed-sequoia.siri.apple.com, *.ls.apple.com',
           'bypass-tun = 10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.88.99.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,233.252.0.0/24,224.0.0.0/4,255.255.255.255/32,::1/128,::ffff:0:0/96,::ffff:0:0:0/96,64:ff9b::/96,64:ff9b:1::/48,100::/64,2001::/32,2001:20::/28,2001:db8::/32,2002::/16,3fff::/20,5f00::/16,fc00::/7,fe80::/10,ff00::/8',
-          'dns-server = https://dns.alidns.com/dns-query, https://doh.pub/dns-query',
-          'fallback-dns-server = system',
+          f'dns-server = {sr_upstream}',
+          f'direct-dns-server = {sr_upstream}',
+          '# 不留空：备用 DNS 留空可能等同于 system。',
+          f'fallback-dns-server = {sr_upstream}',
+          'dns-direct-system = false',
+          'always-ip-address = false',
+          '# 仅解析代理节点自身的域名，不是网站查询的国内备用 DNS。',
+          f'proxy-dns-server = {sr_bootstrap}',
           f'update-url = {ME}/shadowrocket.conf', '',
           '[Proxy Group]', '# 默认直连；外区服务打不开时在 SR 首页切到 PROXY',
           '🍎 苹果服务 = select,DIRECT,PROXY', '', '[Rule]']
@@ -58,7 +78,7 @@ def main():
 
     st = [hdr, 'name: Roy 统一分流规则',
           'desc: 统一分流 + Cloudflare DNS 经节点选择（含国内域名）；国内 CDN 可能变慢，更新前阅读仓库 README',
-          '# DNS 行为仅适用于 Stash；Shadowrocket 继续使用原有 DNS。',
+          '# 此文件仅供 Stash；Shadowrocket 的 DNS 在 shadowrocket.conf 中单独生成。',
           '# 合并版启用后关闭旧的「Roy DNS 经代理」本地覆写，避免重复。',
           '# 常规 DNS 走当前选中节点，不固定国家；国内网站连接仍按下方规则分流。',
           'dns:', '  follow-rule: true', '  skip-cert-verify: false',

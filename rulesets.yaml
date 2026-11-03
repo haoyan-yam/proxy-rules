@@ -1,4 +1,4 @@
-# 唯一的结构定义：规则顺序、规则集来源、策略和 Stash 专用 DNS。
+# 唯一的结构定义：规则顺序、规则集来源、策略及两端各自的 DNS。
 # shadowrocket.conf 和 stash.stoverride 都由 scripts/build.py 从这里生成，不要手改这两个文件。
 #
 # policy 取值：proxy / direct / reject / apple（🍎 苹果服务，可切换）
@@ -12,6 +12,17 @@ stash_dns:
   nameservers:
     - https://1.1.1.1/dns-query
     - https://1.0.0.1/dns-query
+
+# Shadowrocket 2.2.93 目标配置；待 iOS/iPadOS 实机验收。
+# 生成器给常规/直连/备用 DNS 加 #proxy，跟随首页所选节点。
+# 节点域名独立使用国内 IP 形式 DoH 引导，不经代理，避免循环。
+shadowrocket_dns:
+  nameservers:
+    - https://1.1.1.1/dns-query
+    - https://1.0.0.1/dns-query
+  node_nameservers:
+    - https://223.5.5.5/dns-query
+    - https://223.6.6.6/dns-query
 
 rulesets:
   - {label: 局域网,        source: bm,       name: Lan,          policy: direct}

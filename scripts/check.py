@@ -5,7 +5,7 @@
 3. 所有规则集 URL 可访问（--offline 跳过）
 4. tests.yaml 里的域名分流结果符合预期（--offline 跳过）
 """
-import pathlib, subprocess, sys, tempfile, shutil, urllib.request, yaml
+import pathlib, subprocess, sys, tempfile, shutil, urllib.request, yaml, configparser
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'scripts'))
@@ -41,11 +41,30 @@ if 'proxy-groups' in st or 'proxies' in st:
     err('Stash 覆写不能定义节点或策略组')
 if st['rules'][-1] != 'MATCH,🐟 漏网之鱼':
     err('Stash 必须保留 MATCH 兜底规则')
-sr_text = (ROOT / 'shadowrocket.conf').read_text()
-if ('dns-server = https://dns.alidns.com/dns-query, https://doh.pub/dns-query' not in sr_text.splitlines()
-        or 'fallback-dns-server = system' not in sr_text.splitlines()):
-    err('此次 Stash DNS 合并不得改变 Shadowrocket 的 DNS')
 ok('Stash DNS 合并检查完成')
+
+# Shadowrocket #proxy 是 URL 的一部分，不能按行内注释丢弃。
+sr_text = (ROOT / 'shadowrocket.conf').read_text()
+sr_config = configparser.ConfigParser(interpolation=None, inline_comment_prefixes=None)
+sr_config.read_string(sr_text.split('[Proxy Group]')[0])
+sr_general = sr_config['General']
+expected_sr = [url + '#proxy' for url in expected_servers]
+for key in ('dns-server', 'direct-dns-server', 'fallback-dns-server'):
+    got = [v.strip() for v in sr_general.get(key, '').split(',')]
+    if got != expected_sr:
+        err(f'Shadowrocket {key} 必须为经默认节点的 Cloudflare DoH，不能回退系统 DNS')
+if sr_general.get('dns-direct-system') != 'false':
+    err('Shadowrocket 不应对直连域名启用系统 DNS')
+if sr_general.get('always-ip-address') != 'false':
+    err('Shadowrocket 应保留代理域名的远端解析机制')
+if [v.strip() for v in sr_general.get('proxy-dns-server', '').split(',')] != [
+        'https://223.5.5.5/dns-query', 'https://223.6.6.6/dns-query']:
+    err('节点域名必须使用独立 IP 形式 DoH 引导，不能依赖 #proxy')
+if sr_general.get('update-url') != build.ME + '/shadowrocket.conf':
+    err('Shadowrocket 必须保留可持续更新的订阅地址')
+if not sr_text.rstrip().endswith('FINAL,PROXY'):
+    err('Shadowrocket 必须保留 FINAL,PROXY 兜底')
+ok('Shadowrocket DNS 配置检查完成（不替代实机验收）')
 
 # 2. 个人规则语法
 TYPES = {'DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD', 'IP-CIDR', 'IP-CIDR6'}
