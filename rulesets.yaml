@@ -18,6 +18,14 @@ stash_dns:
     - https://1.1.1.1/dns-query
     - https://1.0.0.1/dns-query
 
+# 仅 Stash：DNS 服务器 IP 规则之后、业务规则之前，固定使用 DIRECT。
+# 不写入两端共用的个人规则，避免改变 Shadowrocket 内置 Tailscale 的现有行为。
+# 端口规则适用于所有发往这些目标端口的连接，并不限于某个进程。
+stash_direct_rules:
+  - DOMAIN-SUFFIX,tailscale.com
+  - DST-PORT,3478
+  - DST-PORT,41641
+
 # Shadowrocket 2.2.93 目标配置；待 iOS/iPadOS 实机验收。
 # 默认/备用 DNS 加 #proxy；直连 DNS 使用上方 direct_dns，不加 #proxy。
 # 节点域名独立使用国内 IP 形式 DoH 引导，不经代理，避免循环。

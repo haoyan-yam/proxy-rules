@@ -59,6 +59,26 @@ if st['rules'][-1] != 'MATCH,🐟 漏网之鱼':
     err('Stash 必须保留 MATCH 兜底规则')
 ok('Stash DNS 合并检查完成')
 
+# Stash 专用连接规则不能落在业务规则 / MATCH 之后，也不能传播到 SR。
+connection_rules = st['rules'][4:next(i for i, rule in enumerate(st['rules']) if rule.startswith('RULE-SET,'))]
+cases = yaml.safe_load((ROOT / 'stash-tests.yaml').read_text())
+for case in cases:
+    hit = False
+    for rule in connection_rules:
+        kind, value, policy = rule.split(',')
+        if policy != 'DIRECT':
+            err('Stash 专用规则必须固定 DIRECT，不能跟随可切换策略组')
+        if ((kind == 'DOMAIN' and case['host'] == value)
+                or (kind == 'DOMAIN-SUFFIX' and (case['host'] == value or case['host'].endswith('.' + value)))
+                or (kind == 'DST-PORT' and case['port'] == int(value))):
+            hit = True
+            break
+    if hit != case['direct']:
+        err(f'Stash 专用直连匹配错误：{case}')
+if any(rule in (ROOT / 'shadowrocket.conf').read_text().splitlines() for rule in connection_rules):
+    err('Stash 专用直连规则不应写入 Shadowrocket')
+ok(f'Stash 专用直连边界测试 {len(cases)} 条完成（不替代内核实测）')
+
 # Shadowrocket #proxy 是 URL 的一部分，不能按行内注释丢弃。
 sr_text = (ROOT / 'shadowrocket.conf').read_text()
 sr_config = configparser.ConfigParser(interpolation=None, inline_comment_prefixes=None)

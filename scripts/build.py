@@ -37,6 +37,14 @@ def validate_doh(servers, label):
 def main():
     settings = yaml.safe_load((ROOT / 'rulesets.yaml').read_text())
     cfg = settings['rulesets']
+    direct_rules = settings.get('stash_direct_rules', [])
+    for rule in direct_rules:
+        parts = rule.split(',')
+        if (len(parts) != 2 or not parts[1]
+                or parts[0] not in ('DOMAIN', 'DOMAIN-SUFFIX', 'DST-PORT')):
+            raise ValueError('stash_direct_rules 仅支持无策略的 DOMAIN / DOMAIN-SUFFIX / DST-PORT')
+        if parts[0] == 'DST-PORT' and not (parts[1].isdigit() and 1 <= int(parts[1]) <= 65535):
+            raise ValueError('stash_direct_rules 目标端口必须为 1–65535')
     dns_servers = settings['stash_dns']['nameservers']
     validate_doh(dns_servers, 'stash_dns.nameservers')
     direct_servers = settings['direct_dns']['nameservers']
@@ -100,7 +108,7 @@ def main():
         for _, _, sid, *_ in sources(r):
             st.append(f"    'rule-set:{sid}':")
             st += [f'      - {server}' for server in servers]
-    st += ['', f'# 规则顺序：DNS 服务器 IP 指定出口 → {order}', '',
+    st += ['', f'# 规则顺序：DNS 服务器 IP 指定出口 → Stash 专用直连 → {order}', '',
           '# 注意：覆写不定义策略组。基础配置（VIRCS 自建 / WgetCloud 等机场订阅）里已有同名组，重复定义会报 duplicate proxy name',
           'rule-providers:']
     for r in cfg:
@@ -110,6 +118,8 @@ def main():
            '# 基础配置必须定义这 4 个策略组：🚀 节点选择 / 🎯 全球直连 / 🍎 苹果服务 / 🐟 漏网之鱼', 'rules:']
     st += ['  # 必须先于所有业务规则和 MATCH，确保 DNS 不依赖兜底组选择']
     st += [f'  - {rule}' for rule in dns_rules]
+    st += ['  # Tailscale 控制连接、STUN 与常用直连端口；不改变 DNS policy 或系统路由']
+    st += [f'  - {rule},DIRECT' for rule in direct_rules]
     for r in cfg:
         st.append(f"  # {r['label']}")
         st += [f'  - RULE-SET,{sid},{ST_POL[r["policy"]]}' for _, _, sid, *_ in sources(r)]

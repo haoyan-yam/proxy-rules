@@ -1,0 +1,10 @@
+# 仅验证 Stash 专用直连规则的匹配边界；false 表示继续原有业务规则。
+- {host: tailscale.com, port: 443, direct: true}
+- {host: controlplane.tailscale.com, port: 443, direct: true}
+- {host: derp20.tailscale.com, port: 443, direct: true}
+- {host: example.net, port: 3478, direct: true}
+- {host: example.net, port: 41641, direct: true}
+- {host: example.net, port: 443, direct: false}
+- {host: nottailscale.com, port: 443, direct: false}
+- {host: tailscale.com.example.net, port: 443, direct: false}
+- {host: example.net, port: 41642, direct: false}

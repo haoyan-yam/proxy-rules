@@ -13,6 +13,7 @@ rules/personal_direct.list  个人直连（两端共用）
 rules/personal_proxy.list   个人代理（两端共用）
 tests.yaml                  业务分流回归测试
 dns-tests.yaml              Stash 域名 DNS 分流回归测试
+stash-tests.yaml            Stash 专用直连规则匹配边界测试
 ```
 
 - 公共规则集来自 blackmatrix7/ios_rule_script：SR 用 `rule/Shadowrocket/`，Stash 用 `rule/Clash/`，两者内容同源。
@@ -22,6 +23,7 @@ dns-tests.yaml              Stash 域名 DNS 分流回归测试
 - 当前 DNS 策略经 Roy 选择：直连域名用国内 AliDNS DoH，默认 Cloudflare DoH 经代理。`direct_dns` 影响两端；其他上游分别在 `stash_dns` / `shadowrocket_dns`。
 - Stash `nameserver-policy` 按业务规则集合顺序生成，代理集合也需显式列入。nameserver、policy、空 fallback 必须保留 `#!replace`。DNS 服务器四条 IP 规则放在最前；不能新增节点/策略组，也不统一修改引导 DNS。
 - Stash DNS policy 不跟随手动策略组选择：Apple 默认国内 DNS，切到代理时需另调 policy。IP/GEOIP 才能判断的域名仍使用默认 DNS。要求 macOS 4.3+ / iOS 3.6+；不能默默支持旧版本。
+- `stash_direct_rules` 仅生成到 Stash，在四条 DNS IP 规则之后、业务规则之前固定 DIRECT；不改变 DNS policy 或 Shadowrocket。用于 Tailscale 域名及常用端口直连，变更同步 `stash-tests.yaml` 与 README；不能自动修改各设备跳过 TUN、系统路由或路由器 IPv6。
 - Shadowrocket 目标 2.2.93：直连 DNS 为国内 DoH 不加 #proxy；默认/备用 Cloudflare 加 #proxy，节点 DNS 独立引导。保留代理域名远端解析，不能声称所有代理域名均由 Cloudflare 解析。备用不可留空，避免隐式系统 DNS。
 - 测试脚本下载实际规则源做域名匹配检查，不模拟整个内核、IP/GEOIP 或手动组选择，不代替手机/Mac 实测。报告需区分仓库已发布、设备已加载与请求路径已验证。
 - 国内解析器能看到直连域名与出口 IP，属于有意选择；不承诺全场景零泄露。继承 Hosts/bootstrap 等及其他覆写仍需检查；旧内网 DNS policy 会被替换，升级和回退见 README。

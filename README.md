@@ -42,6 +42,29 @@ Stash 在业务规则之前有四条 DNS 服务器 IP 规则：Cloudflare `1.1.1
 - **Shadowrocket**：配置 → 添加 `https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/shadowrocket.conf`，设为默认。整份配置走云端更新；节点在 SR 里单独管理。
 - **Stash**：基础配置（自建 VIRCS 配置或 WgetCloud 等机场订阅）+ 在「覆写」里从 URL 安装 `https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/stash.stoverride`。覆写接管全部分流规则及下述 DNS 字段；基础配置仍提供节点、4 个策略组（🚀 节点选择 / 🎯 全球直连 / 🍎 苹果服务 / 🐟 漏网之鱼）及其他未覆盖设置。更换基础配置后需重新检查 DNS 继承项。
 
+## Stash 与独立 Tailscale 客户端共存
+
+Stash 统一覆写已包含以下固定直连规则，位于四条 DNS 服务器 IP 规则之后、所有业务规则之前：
+
+```yaml
+- DOMAIN-SUFFIX,tailscale.com,DIRECT
+- DST-PORT,3478,DIRECT
+- DST-PORT,41641,DIRECT
+```
+
+这些规则避免 Tailscale 域名连接、STUN 和常用直连端口被通用代理规则接管。端口规则不限进程或协议，会让发往这两个目标端口的其他连接也直连；NAT 映射到其他端口的连接不由这两条端口规则覆盖。四条 DNS IP 规则仍具有更高优先级，原 DNS policy 不变，不能据此宣称 Tailscale 的 DNS 查询也全部直连。
+
+规则只在 Stash 生成，Shadowrocket 配置与两端共享个人列表保持不变。手机内置 Tailscale 与 Mac 独立客户端的处理方式不同，不将 Mac 的修复直接套到手机。
+
+更新与验证：
+
+1. 在每台 Mac 更新现有「Roy 统一分流规则」远程覆写，URL 不变。GitHub 发布不代表设备已加载。
+2. 确认运行中的规则已包含上面三条，再关闭重复的「Mini Tailscale 直连测试」或「MacBook Air Tailscale 直连」本地覆写。验证前可先保留旧覆写；仅有文件预览不代表已有 UDP 会话已采用新规则。
+3. 若使用 Stash TUN 与独立 Tailscale，检查目标 `100.x` 的系统路由是否交给 Tailscale。若「跳过 TUN」中的 `100.64.0.0/10` 导致它被送往物理网关，需在该设备单独修正；本覆写不会修改此设置。不要复制另一台 Mac 的 `utun` 编号或路由命令。
+4. 可用公网 IPv6 有助于建立直连，但由实际网络提供；本覆写不启用路由器 IPv6、不强制中继地区，也不保证一定打洞成功。更新后测试 Tailscale 路径及常用国内/代理网站；需要重连时由设备使用者操作。
+
+此处三条规则已在一台 Mac 与手机的场景中使用，IPv6 直连依赖另行启用的家中 IPv6。公司 Mac、其他网络及更新后的合并覆写仍需分别验收。回退本次规则合并可使用[更新前固定版本的 Stash 覆写](https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@1a3dc28802718f306bee57e58500a8bd75d2cfb7/stash.stoverride)；不要为撤回这三条规则改动手机配置或关闭已验证有效的路由修复。
+
 ## Stash DNS：行为、限制与升级
 
 ### 当前方案与边界
