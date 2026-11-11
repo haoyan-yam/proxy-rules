@@ -8,12 +8,14 @@
 
 ```
 rulesets.yaml ──scripts/build.py──▶ shadowrocket.conf   （SR 订阅整份配置）
-                                └─▶ stash.stoverride    （Stash 覆写：DNS + 规则集 + 规则）
+                                └─▶ stash.stoverride    （Stash 通用覆写：DNS + 规则集 + 规则）
+                                └─▶ stash-mini.stoverride（Mini 完整版，增加内网接口出口）
 rules/personal_direct.list  个人直连（两端共用）
 rules/personal_proxy.list   个人代理（两端共用）
 tests.yaml                  业务分流回归测试
 dns-tests.yaml              Stash 域名 DNS 分流回归测试
 stash-tests.yaml            Stash 专用直连规则匹配边界测试
+stash-interface-tests.yaml  设备版首条匹配与内外层出口边界测试
 ```
 
 - 公共规则集来自 blackmatrix7/ios_rule_script：SR 用 `rule/Shadowrocket/`，Stash 用 `rule/Clash/`，两者内容同源。
@@ -21,10 +23,11 @@ stash-tests.yaml            Stash 专用直连规则匹配边界测试
 - 覆写**不要**定义 proxy-groups：WgetCloud 自带「🍎 苹果服务」，重复定义会报 duplicate proxy name。
 - 覆写的规则会插到基础配置规则的前面，并且以 `MATCH,🐟 漏网之鱼` 结尾，所以基础配置自带的规则永远不会被用到。换机场、换基础配置都不影响分流结果。
 - 当前 DNS 策略经 Roy 选择：直连域名用国内 AliDNS DoH，默认 Cloudflare DoH 经代理。`direct_dns` 影响两端；其他上游分别在 `stash_dns` / `shadowrocket_dns`。
-- Stash `nameserver-policy` 按业务规则集合顺序生成，代理集合也需显式列入。nameserver、policy、空 fallback 必须保留 `#!replace`。DNS 服务器四条 IP 规则放在最前；不能新增节点/策略组，也不统一修改引导 DNS。
+- Stash `nameserver-policy` 按业务规则集合顺序生成，代理集合也需显式列入。nameserver、policy、空 fallback 必须保留 `#!replace`。DNS 服务器四条 IP 规则放在最前；通用版不能新增节点/策略组，也不统一修改引导 DNS。设备版仅允许下述无凭证 direct 出口。
 - `stash_dns.magicdns` 指定独立 Tailscale 客户端的具体 tailnet 后缀与本机 Quad100。该通配域名 policy 优先于业务集合，并加入 `fake-ip-filter`（保留数组合并，不能 replace 原排除项）；不把全部 `ts.net` 或普通 DNS 查询送给 Quad100。变更后缀时同步 DNS 测试与 Stash 直连规则。
 - Stash DNS policy 不跟随手动策略组选择：Apple 默认国内 DNS，切到代理时需另调 policy。IP/GEOIP 才能判断的域名仍使用默认 DNS。要求 macOS 4.3+ / iOS 3.6+；不能默默支持旧版本。
-- `stash_direct_rules` 仅生成到 Stash，在四条 DNS IP 规则之后、业务规则之前固定 DIRECT；不改变 DNS policy 或 Shadowrocket。支持域名、目标端口和带 `no-resolve` 的 IPv4/IPv6 网段，用于 Tailscale 内网、Quad100、控制域名及常用端口直连，变更同步 `stash-tests.yaml` 与 README；不能自动修改各设备跳过 TUN、系统路由或路由器 IPv6。
+- `stash_tailnet_rules` 定义内网与 Quad100 连接；通用版为 DIRECT，设备版为指定接口出口。`stash_interface_profiles` 按设备生成完整 `stash-<设备>.stoverride`，仅增加一个无凭证的 `type: direct` / `interface-name` 出口，不添加真实代理节点或策略组。接口编号必须在目标设备核对，不复制到其他 Mac；只启用一份完整版本，不依赖覆写排序。
+- `stash_direct_rules` 定义公网控制域名和常用端口，设备版也必须保留普通 DIRECT，不能送回 Tailscale 接口。两类规则仅生成到 Stash，在四条 DNS IP 规则之后、业务规则之前固定 DIRECT；不改变 DNS policy 或 Shadowrocket。支持域名、目标端口和带 `no-resolve` 的 IPv4/IPv6 网段，用于 Tailscale 内网、Quad100、控制域名及常用端口直连，变更同步 `stash-tests.yaml` 与 README；不能自动修改各设备跳过 TUN、系统路由或路由器 IPv6。
 - Shadowrocket 目标 2.2.93：直连 DNS 为国内 DoH 不加 #proxy；默认/备用 Cloudflare 加 #proxy，节点 DNS 独立引导。保留代理域名远端解析，不能声称所有代理域名均由 Cloudflare 解析。备用不可留空，避免隐式系统 DNS。
 - 测试脚本下载实际规则源做域名匹配检查，不模拟整个内核、IP/GEOIP 或手动组选择，不代替手机/Mac 实测。报告需区分仓库已发布、设备已加载与请求路径已验证。
 - 国内解析器能看到直连域名与出口 IP，属于有意选择；不承诺全场景零泄露。继承 Hosts/bootstrap 等及其他覆写仍需检查；旧内网 DNS policy 会被替换，升级和回退见 README。
@@ -38,7 +41,7 @@ stash-tests.yaml            Stash 专用直连规则匹配边界测试
    - 两端直连 DNS → 改 `direct_dns`，同步 README、两端字段检查及 dns-tests.yaml
    - Stash DNS → 改 `rulesets.yaml` 的 `stash_dns` / `scripts/build.py`，同步 README 与 `check.py` 的 DNS 回归期望；保持 Shadowrocket 输出不变
    - Shadowrocket DNS → 改 `shadowrocket_dns` / `scripts/build.py`，同步 README 与 DNS 检查；保持业务规则与 Stash 有效配置不变。发布后通知 iPhone/iPad 更新配置，并说明实机验收状态
-   - **不要手改** `shadowrocket.conf` 和 `stash.stoverride`，这两个是生成的
+   - **不要手改** `shadowrocket.conf`、`stash.stoverride` 和 `stash-*.stoverride`，均由源文件生成
 2. 业务分流变动更新 `tests.yaml`；DNS 变动更新 `dns-tests.yaml` 和字段约束。
 3. 运行 `python3 scripts/check.py`，必须全部通过。
 4. commit 后 push 到 main。GitHub Actions 会再跑一遍校验，并刷新 jsDelivr 缓存。

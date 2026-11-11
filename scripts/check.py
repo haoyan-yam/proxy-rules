@@ -17,7 +17,9 @@ def err(msg): errors.append(msg); print('✗', msg)
 def ok(msg): print('✓', msg)
 
 # 1. 生成文件是否最新
-before = {f: (ROOT / f).read_text() for f in ('shadowrocket.conf', 'stash.stoverride')}
+settings = yaml.safe_load((ROOT / 'rulesets.yaml').read_text())
+before = {f: (ROOT / f).read_text() if (ROOT / f).exists() else None
+          for f in build.generated_files(settings)}
 build.main()
 for f, txt in before.items():
     if (ROOT / f).read_text() != txt:
@@ -106,6 +108,50 @@ for case in cases:
 if any(rule in (ROOT / 'shadowrocket.conf').read_text().splitlines() for rule in connection_rules):
     err('Stash 专用直连规则不应写入 Shadowrocket')
 ok(f'Stash 专用直连边界测试 {len(cases)} 条完成（不替代内核实测）')
+
+# 设备版必须完整且只改变内层连接出口，防止 MATCH 或普通 DIRECT 遮住接口规则。
+for profile, config in settings.get('stash_interface_profiles', {}).items():
+    variant_text = (ROOT / f'stash-{profile}.stoverride').read_text()
+    variant = yaml.safe_load(variant_text)
+    proxy = f'Roy-Tailscale-{profile}'
+    expected_proxy = {'name': proxy, 'type': 'direct',
+                      'interface-name': config['interface-name'], 'benchmark-disabled': True}
+    if variant.get('proxies') != [expected_proxy]:
+        err(f'{profile} 只允许一个无凭证的指定接口 direct 出口')
+    expected_rules = [rule.replace(',DIRECT', ',' + proxy, 1)
+                      if rule in required_tailnet_rules else rule for rule in st['rules']]
+    if variant.get('rules') != expected_rules:
+        err(f'{profile} 内网规则必须在业务规则前，公网 DNS / Tailscale 连接及兜底不可改变')
+    if ({k: v for k, v in variant.items() if k not in ('name', 'proxies', 'rules')}
+            != {k: v for k, v in st.items() if k not in ('name', 'rules')}):
+        err(f'{profile} 必须继承完整统一 DNS 与业务规则集')
+    if [line for line in variant_text.splitlines() if '#!replace' in line] != [
+            line for line in st_text.splitlines() if '#!replace' in line]:
+        err(f'{profile} 必须保留统一版的合并标记')
+    # 独立期望覆盖首条命中、内外层端口交叉和不属于 tailnet 的相似地址。
+    for case in yaml.safe_load((ROOT / 'stash-interface-tests.yaml').read_text()):
+        got = None
+        for rule in variant['rules']:
+            kind, value, *rest = rule.split(',')
+            if kind in ('RULE-SET', 'GEOIP', 'MATCH'):
+                break
+            hit = False
+            if kind in ('IP-CIDR', 'IP-CIDR6'):
+                try:
+                    hit = ip_address(case['host']) in ip_network(value)
+                except ValueError:
+                    pass
+            elif kind == 'DOMAIN-SUFFIX':
+                hit = case['host'] == value or case['host'].endswith('.' + value)
+            elif kind == 'DST-PORT':
+                hit = case['port'] == int(value)
+            if hit:
+                got = rest[0]
+                break
+        want = proxy if case['policy'] == 'interface' else case['policy']
+        if got != want:
+            err(f'{profile} 首条命中错误：{case}，实际 {got}')
+ok('Stash 完整设备版检查完成（不替代内核实测）')
 
 # Shadowrocket #proxy 是 URL 的一部分，不能按行内注释丢弃。
 sr_text = (ROOT / 'shadowrocket.conf').read_text()

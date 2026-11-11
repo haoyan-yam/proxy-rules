@@ -20,6 +20,6 @@ jobs:
       - name: Purge jsDelivr cache
         if: github.event_name == 'push'
         run: |
-          for f in shadowrocket.conf stash.stoverride rules/personal_direct.list rules/personal_proxy.list; do
+          for f in shadowrocket.conf stash.stoverride stash-mini.stoverride rules/personal_direct.list rules/personal_proxy.list; do
             curl -fsS "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/$f" > /dev/null && echo "purged $f"
           done

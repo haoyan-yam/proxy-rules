@@ -44,11 +44,28 @@ Stash 在业务规则之前有四条 DNS 服务器 IP 规则：Cloudflare `1.1.1
 
 ## Stash 与独立 Tailscale 客户端共存
 
+### Mini 完整合并版：无需调整覆写顺序（2026-11-11）
+
+Mini 上的实测发现：系统访问 Quad100 正常，Stash 普通 DIRECT 访问 Quad100 超时；单独接口测试覆写的规则落在统一版 MATCH 后，未能命中。因此新增一份由同一源文件生成的**完整设备版**，包含原有业务分流、MagicDNS 和指定接口出口：
+
+`https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@main/stash-mini.stoverride`
+
+1. 在 Mini 的 Stash「覆写」页面从上述 URL 安装「Roy 统一分流规则 · mini」。
+2. 关闭原通用版「Roy 统一分流规则」、临时 MagicDNS、接口绑定测试和旧 DNS 覆写，只启用这一份完整版本。无需拖动排序。
+3. 保持独立 Tailscale 运行、Use Tailscale DNS settings 关闭。核对生效规则：Quad100、自己的 tailnet 域名、`100.64.0.0/10` 和 `fd7a:115c:a1e0::/48` 应命中 `Roy-Tailscale-mini`，位于业务规则与 MATCH 前。
+4. 检查 Stash 解析和系统解析返回真实 `100.x` 地址，再测试在线内网服务、普通国内网站和代理网站。仓库检查通过不代表设备已加载或访问已恢复。
+
+`Roy-Tailscale-mini` 是无密码的 direct 出口，绑定本机 2026-11-11 确认的 Tailscale 接口 `utun10`。仅内层连接使用它；公网 `tailscale.com`、3478、41641 保留普通 DIRECT。公共 DNS 出口和所有业务规则继承通用版。本方案不修改系统 resolver、路由或 Tailscale 开关。
+
+**此地址只给这台 Mini 使用。** 重启或重连后接口编号可能变化；若失效，用 `route -n get 100.100.100.100` 核对 `interface`，再更新 `rulesets.yaml` 的 `stash_interface_profiles.mini.interface-name` 并重新生成。其他 Mac 继续使用通用订阅，接口需各自确认。回退时停用 Mini 版、重新启用原通用版；这也会恢复普通 DIRECT 的已知限制。
+
+语法参考：[Stash 指定接口的直连出口](https://stash.wiki/proxy-protocols/proxy-types#direct-with-specified-interface)。
+
 ### MagicDNS 已合并到统一覆写（2026-11-11）
 
 适用于独立 Tailscale 客户端连接到 `tail2bea5.ts.net` 的 Mac。Tailscale 保持运行，客户端的 **Use Tailscale DNS settings 保持关闭**，tailnet 的 MagicDNS 保持开启；普通网站继续使用原有 Stash DNS 分流。
 
-统一覆写直接包含 `+.tail2bea5.ts.net → 100.100.100.100` 的 `nameserver-policy`，并将该后缀加入 `fake-ip-filter`，返回真实内网地址。Fake-IP 排除列表使用数组合并，保留基础配置的其他排除项。只处理自己的 tailnet；共享设备使用其他后缀时需另行配置。该后缀来自 `rulesets.yaml` 的 `stash_dns.magicdns`。
+统一覆写直接包含 `+.tail2bea5.ts.net → 100.100.100.100` 的 `nameserver-policy`，并将该后缀加入 `fake-ip-filter`，用于获取真实内网地址；前提是 Stash 能访问 Quad100，Mini 的接口问题见上节。Fake-IP 排除列表使用数组合并，保留基础配置的其他排除项。只处理自己的 tailnet；共享设备使用其他后缀时需另行配置。该后缀来自 `rulesets.yaml` 的 `stash_dns.magicdns`。
 
 此前单独启用「Mini-Tailscale-MagicDNS」并放在统一覆写之前，会被统一覆写的 `nameserver-policy: #!replace` 覆盖。合并后不再依赖两份覆写的顺序，也不应通过移除 `#!replace` 来继承其他未知 DNS policy。
 
@@ -63,7 +80,7 @@ Stash 在业务规则之前有四条 DNS 服务器 IP 规则：Cloudflare `1.1.1
 
 本次合并前的 Mac 实测确认：Quad100 能返回内网地址，而旧 Stash policy 解析失败。仓库回归检查不等于合并后设备已加载或端到端访问已恢复。关闭接受 DNS 后，Quad100 对普通网站可能返回 SERVFAIL，不能将它设为全局上游，也不能据此推断开启接受 DNS 时的故障原因。
 
-若需回退本次 MagicDNS 合并，可使用[合并前固定版本](https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@5043a4d28a163f499174e476d82a89bd8ead3f4e/stash.stoverride)。旧版本不包含 MagicDNS 分流，需要恢复单独覆写并放在统一覆写之后，或另行安排内网解析。固定版本不会自动获得后续修复。
+若需回退本次 MagicDNS 合并，可使用[合并前固定版本](https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@5043a4d28a163f499174e476d82a89bd8ead3f4e/stash.stoverride)。旧版本不包含 MagicDNS 分流，需要另行安排内网解析。不要依赖界面上下位置推断最终规则顺序，应检查运行配置。固定版本不会自动获得后续修复。
 
 参考：[Tailscale 手动配置 MagicDNS](https://tailscale.com/docs/reference/faq/dns-resolv-conf)、[Stash DNS](https://stash.wiki/features/dns-server)。
 
@@ -177,7 +194,8 @@ Stash 统一覆写已包含以下固定直连规则，位于四条 DNS 服务器
 | 加/删某个域名、IP | `rules/personal_*.list` | `python3 scripts/check.py`，然后 push |
 | 规则顺序、公共规则集、策略 | `rulesets.yaml` | `python3 scripts/build.py`，再 `check.py`，然后 push |
 | 两端直连 DNS 上游 | `rulesets.yaml` 的 `direct_dns` | 同步 DNS 回归期望和 README，运行 build/check；两端分别更新 |
-| Stash MagicDNS | `rulesets.yaml` 的 `stash_dns.magicdns` 与 `stash_direct_rules` | 同步 DNS/连接边界测试；仅更新 Stash 覆写并关闭临时 MagicDNS 覆写 |
+| Stash MagicDNS | `rulesets.yaml` 的 `stash_dns.magicdns` 与 `stash_tailnet_rules` | 同步 DNS/连接边界测试；仅更新 Stash 覆写并关闭临时 MagicDNS 覆写 |
+| Mini 的 Tailscale 接口 | `rulesets.yaml` 的 `stash_interface_profiles.mini.interface-name` | 先核对本机接口，再生成并检查；仅更新 Mini 完整覆写 |
 | Stash 常规 DNS 上游 | `rulesets.yaml` 的 `stash_dns` | 同步更新 `scripts/check.py` 的 DNS 回归期望，运行 build/check；仅更新 Stash 覆写 |
 | Shadowrocket 网站 / 节点 DNS | `rulesets.yaml` 的 `shadowrocket_dns` | 同步更新 DNS 回归期望和 README，运行 build/check；iPhone/iPad 分别更新配置并验收 |
 | 节点 | 各客户端本地 | 不经过仓库 |

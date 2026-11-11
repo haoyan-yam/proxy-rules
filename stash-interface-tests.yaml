@@ -1,0 +1,20 @@
+# interface 表示该设备的指定接口出口；null 表示继续业务规则。
+- {host: '100.100.100.100', port: 53, policy: interface}
+- {host: node.tail2bea5.ts.net, port: 8723, policy: interface}
+- {host: tail2bea5.ts.net, port: 443, policy: interface}
+- {host: '100.83.49.7', port: 3478, policy: interface}
+- {host: '100.64.0.0', port: 443, policy: interface}
+- {host: '100.127.255.255', port: 443, policy: interface}
+- {host: 'fd7a:115c:a1e0::53', port: 53, policy: interface}
+- {host: '100.63.255.255', port: 443, policy: null}
+- {host: '100.128.0.0', port: 443, policy: null}
+- {host: 'fd7a:115c:a1e1::1', port: 443, policy: null}
+- {host: node.other-tailnet.ts.net, port: 443, policy: null}
+- {host: node.tail2bea5.ts.net.example.net, port: 443, policy: null}
+- {host: controlplane.tailscale.com, port: 443, policy: DIRECT}
+- {host: derp20.tailscale.com, port: 443, policy: DIRECT}
+- {host: example.net, port: 3478, policy: DIRECT}
+- {host: example.net, port: 41641, policy: DIRECT}
+- {host: example.net, port: 443, policy: null}
+- {host: '1.1.1.1', port: 3478, policy: '🚀 节点选择'}
+- {host: '223.5.5.5', port: 53, policy: DIRECT}

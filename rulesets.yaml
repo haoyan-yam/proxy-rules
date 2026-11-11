@@ -23,14 +23,24 @@ stash_dns:
     suffix: tail2bea5.ts.net
     nameserver: 100.100.100.100
 
-# 仅 Stash：DNS 服务器 IP 规则之后、业务规则之前，固定使用 DIRECT。
-# 不写入两端共用的个人规则，避免改变 Shadowrocket 内置 Tailscale 的现有行为。
-# 端口规则适用于所有发往这些目标端口的连接，并不限于某个进程。
-stash_direct_rules:
+# 仅 Stash 内层 tailnet：通用版用 DIRECT，设备完整合并版改用绑定接口出口。
+# 四条 DNS IP 规则之后、控制/端口及业务规则之前。
+stash_tailnet_rules:
   - IP-CIDR,100.100.100.100/32,no-resolve
   - DOMAIN-SUFFIX,tail2bea5.ts.net
   - IP-CIDR,100.64.0.0/10,no-resolve
   - IP-CIDR6,fd7a:115c:a1e0::/48,no-resolve
+
+# 同一套规则生成完整设备版，不是叠加覆写；接口编号必须逐台验证。
+# 本机 2026-11-11 route -n get 100.100.100.100 返回 utun10。
+stash_interface_profiles:
+  mini:
+    interface-name: utun10
+
+# 仅 Stash：DNS / tailnet 规则之后、业务规则之前，固定使用 DIRECT。
+# 不写入两端共用的个人规则，避免改变 Shadowrocket 内置 Tailscale 的现有行为。
+# 端口规则适用于所有发往这些目标端口的连接，并不限于某个进程。
+stash_direct_rules:
   - DOMAIN-SUFFIX,tailscale.com
   - DST-PORT,3478
   - DST-PORT,41641

@@ -34,11 +34,26 @@ def validate_doh(servers, label):
             raise ValueError(f'{label} 必须使用不含凭证、查询参数或片段的 HTTPS URL')
         ip_address(url.hostname)  # 必须为 IP，不能依赖 DNS 解析自身
 
+def connection_rule(rule, policy='DIRECT'):
+    parts = rule.split(',')
+    return ','.join(parts[:2] + [policy] + parts[2:])
+
+def generated_files(settings):
+    return ['shadowrocket.conf', 'stash.stoverride'] + [
+        f'stash-{profile}.stoverride' for profile in settings.get('stash_interface_profiles', {})]
+
 def main():
     settings = yaml.safe_load((ROOT / 'rulesets.yaml').read_text())
     cfg = settings['rulesets']
+    tailnet_rules = settings['stash_tailnet_rules']
     direct_rules = settings.get('stash_direct_rules', [])
-    for rule in direct_rules:
+    profiles = settings.get('stash_interface_profiles', {})
+    for profile, config in profiles.items():
+        if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', profile):
+            raise ValueError('Stash 设备标识只能使用小写字母、数字及中间连字符')
+        if not re.fullmatch(r'utun[0-9]+', config['interface-name']):
+            raise ValueError('Tailscale 接口必须为在该设备确认过的 utun 编号')
+    for rule in tailnet_rules + direct_rules:
         parts = rule.split(',')
         if parts[0] in ('IP-CIDR', 'IP-CIDR6'):
             if len(parts) != 3 or parts[2] != 'no-resolve':
@@ -137,15 +152,26 @@ def main():
     st += ['  # 必须先于所有业务规则和 MATCH，确保 DNS 不依赖兜底组选择']
     st += [f'  - {rule}' for rule in dns_rules]
     st += ['  # Tailscale 内网 / MagicDNS、控制连接、STUN 与常用端口；不修改系统路由']
-    for rule in direct_rules:
-        parts = rule.split(',')
-        st.append('  - ' + ','.join(parts[:2] + ['DIRECT'] + parts[2:]))
+    st += ['  - ' + connection_rule(rule) for rule in tailnet_rules + direct_rules]
     for r in cfg:
         st.append(f"  # {r['label']}")
         st += [f'  - RULE-SET,{sid},{ST_POL[r["policy"]]}' for _, _, sid, *_ in sources(r)]
     st += ['  # 兜底', '  - GEOIP,CN,🎯 全球直连', '  - MATCH,🐟 漏网之鱼', '']
     (ROOT / 'stash.stoverride').write_text('\n'.join(st))
-    print('built: shadowrocket.conf, stash.stoverride')
+    for profile, config in profiles.items():
+        proxy_name = f'Roy-Tailscale-{profile}'
+        replacements = {'  - ' + connection_rule(rule):
+                        '  - ' + connection_rule(rule, proxy_name) for rule in tailnet_rules}
+        variant = [replacements.get(line, line) for line in st]
+        variant[variant.index('name: Roy 统一分流规则')] = f'name: Roy 统一分流规则 · {profile}'
+        variant[variant.index('dns:'):variant.index('dns:')] = [
+            f'# 完整设备版，仅适用于 Tailscale 接口为 {config["interface-name"]} 的 {profile}。',
+            '# 只启用此完整版本；关闭通用版与临时 MagicDNS / 接口绑定覆写，不依赖排序。',
+            '# 重启或重连后请核对接口编号；不自动修改系统 DNS、路由或 Tailscale 开关。',
+            'proxies:', f'  - name: {proxy_name}', '    type: direct',
+            f'    interface-name: {config["interface-name"]}', '    benchmark-disabled: true', '']
+        (ROOT / f'stash-{profile}.stoverride').write_text('\n'.join(variant))
+    print('built: ' + ', '.join(generated_files(settings)))
 
 if __name__ == '__main__':
     main()
