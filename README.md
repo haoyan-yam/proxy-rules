@@ -59,6 +59,8 @@ Mini 上的实测发现：系统访问 Quad100 正常，Stash 普通 DIRECT 访�
 
 **此地址只给这台 Mini 使用。** 重启或重连后接口编号可能变化；若失效，用 `route -n get 100.100.100.100` 核对 `interface`，再更新 `rulesets.yaml` 的 `stash_interface_profiles.mini.interface-name` 并重新生成。其他 Mac 继续使用通用订阅，接口需各自确认。回退时停用 Mini 版、重新启用原通用版；这也会恢复普通 DIRECT 的已知限制。
 
+本机验收（2026-11-11，Stash 4.3.5）：仅启用 Mini 完整版后，运行规则确认 Quad100 命中 `Roy-Tailscale-mini`；Stash 解析 API 从 Quad100 返回 Node 与 Muse 的真实内网地址，Node 服务通过域名、IP 和显式 Stash HTTP 代理均返回 HTTP 200，百度与 Google 返回 HTTP 200。系统 `dig` / `dscacheutil` 仍返回 Fake-IP，清理 Stash DNS 缓存后新查询也如此，不能归因于旧缓存。因此目前确认的是解析上游与实际访问恢复，**尚未确认应用侧真实 IP 返回**，不要以系统仍显示 `198.18.*` 单独判定访问失败。Muse SSH 端口另有拒绝连接现象，不在这次 DNS 修复的成功范围内。
+
 语法参考：[Stash 指定接口的直连出口](https://stash.wiki/proxy-protocols/proxy-types#direct-with-specified-interface)。
 
 ### MagicDNS 已合并到统一覆写（2026-11-11）
