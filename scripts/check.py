@@ -6,6 +6,7 @@
 4. tests.yaml 里的域名分流结果符合预期（--offline 跳过）
 """
 import pathlib, subprocess, sys, tempfile, shutil, urllib.request, yaml, configparser
+from ipaddress import ip_address, ip_network
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'scripts'))
@@ -45,14 +46,21 @@ if dns.get('fallback') != [] or '  fallback: #!replace' not in st_text.splitline
 if '  nameserver-policy: #!replace' not in st_text.splitlines():
     err('Stash 必须替换旧 nameserver-policy')
 policies = dns.get('nameserver-policy', {})
+magicdns_key = '+.tail2bea5.ts.net'
+expected_magicdns = ['100.100.100.100']
 rule_ids = [r.split(',')[1] for r in st['rules'] if r.startswith('RULE-SET,')]
-if list(policies) != ['rule-set:' + sid for sid in rule_ids]:
-    err('DNS policy 顺序必须与业务域名规则顺序一致')
+if list(policies) != [magicdns_key] + ['rule-set:' + sid for sid in rule_ids]:
+    err('DNS policy 必须先包含具体 tailnet，再按业务域名规则顺序排列')
 domestic_ids = {'lan', 'personal_direct', 'apple_domain', 'apple', 'china_domain', 'china'}
 for key, servers in policies.items():
-    expected = expected_direct if key.removeprefix('rule-set:') in domestic_ids else expected_servers
+    expected = (expected_magicdns if key == magicdns_key else
+                expected_direct if key.removeprefix('rule-set:') in domestic_ids else expected_servers)
     if servers != expected:
         err(f'{key} 使用了错误的 DNS 上游')
+if dns.get('fake-ip-filter') != [magicdns_key]:
+    err('必须排除自己的 tailnet Fake-IP，不扩大到全部 ts.net')
+if '  fake-ip-filter:' not in st_text.splitlines():
+    err('fake-ip-filter 必须保留数组合并，不能替换基础配置已有排除项')
 if 'proxy-groups' in st or 'proxies' in st:
     err('Stash 覆写不能定义节点或策略组')
 if st['rules'][-1] != 'MATCH,🐟 漏网之鱼':
@@ -61,13 +69,33 @@ ok('Stash DNS 合并检查完成')
 
 # Stash 专用连接规则不能落在业务规则 / MATCH 之后，也不能传播到 SR。
 connection_rules = st['rules'][4:next(i for i, rule in enumerate(st['rules']) if rule.startswith('RULE-SET,'))]
+required_tailnet_rules = {
+    'IP-CIDR,100.100.100.100/32,DIRECT,no-resolve',
+    'DOMAIN-SUFFIX,tail2bea5.ts.net,DIRECT',
+    'IP-CIDR,100.64.0.0/10,DIRECT,no-resolve',
+    'IP-CIDR6,fd7a:115c:a1e0::/48,DIRECT,no-resolve',
+}
+if not required_tailnet_rules.issubset(connection_rules):
+    err('MagicDNS 和 tailnet 直连规则必须位于业务规则之前')
+for rule in connection_rules:
+    parts = rule.split(',')
+    if parts[2] != 'DIRECT':
+        err('Stash 专用规则必须固定 DIRECT，不能跟随可切换策略组')
+    if parts[0] in ('IP-CIDR', 'IP-CIDR6') and parts[3:] != ['no-resolve']:
+        err('Stash 专用 IP 规则必须带 no-resolve')
 cases = yaml.safe_load((ROOT / 'stash-tests.yaml').read_text())
 for case in cases:
     hit = False
     for rule in connection_rules:
-        kind, value, policy = rule.split(',')
-        if policy != 'DIRECT':
-            err('Stash 专用规则必须固定 DIRECT，不能跟随可切换策略组')
+        kind, value, policy, *options = rule.split(',')
+        if kind in ('IP-CIDR', 'IP-CIDR6'):
+            # 只匹配输入为 IP 的测试，不对域名执行隐式解析。
+            try:
+                hit = ip_address(case['host']) in ip_network(value)
+            except ValueError:
+                hit = False
+            if hit:
+                break
         if ((kind == 'DOMAIN' and case['host'] == value)
                 or (kind == 'DOMAIN-SUFFIX' and (case['host'] == value or case['host'].endswith('.' + value)))
                 or (kind == 'DST-PORT' and case['port'] == int(value))):
@@ -205,12 +233,19 @@ ok(f'分流测试 {len(tests)} 条完成')
 dns_tests = yaml.safe_load((ROOT / 'dns-tests.yaml').read_text())
 for host, want in dns_tests.items():
     selected = dns['nameserver']
+    # 通配域名 policy 优先于集合；边界用例覆盖相似域名与其他 tailnet。
+    if match(host, 'STDOMAIN', magicdns_key):
+        selected = policies.get(magicdns_key, [])
     for key, servers in policies.items():
+        if selected == expected_magicdns:
+            break
         rules = provider_domains.get(key.removeprefix('rule-set:'), [])
         if any(match(host, t, v) for t, v in rules):
             selected = servers
             break
-    got = 'domestic' if selected == expected_direct else 'cloudflare'
+    got = ('magicdns' if selected == expected_magicdns else
+           'domestic' if selected == expected_direct else
+           'cloudflare' if selected == expected_servers else 'unknown')
     if got != want:
         err(f'{host}: DNS 期望 {want}，实际 {got}')
 ok(f'DNS 域名分流测试 {len(dns_tests)} 条完成（不模拟 IP/GEOIP 或策略组手动切换）')

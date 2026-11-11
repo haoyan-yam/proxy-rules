@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """从 rulesets.yaml 生成 shadowrocket.conf 和 stash.stoverride。用法：python3 scripts/build.py"""
-import pathlib, yaml
-from ipaddress import ip_address
+import pathlib, re, yaml
+from ipaddress import ip_address, ip_network
 from urllib.parse import urlsplit
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -40,13 +40,26 @@ def main():
     direct_rules = settings.get('stash_direct_rules', [])
     for rule in direct_rules:
         parts = rule.split(',')
+        if parts[0] in ('IP-CIDR', 'IP-CIDR6'):
+            if len(parts) != 3 or parts[2] != 'no-resolve':
+                raise ValueError('stash_direct_rules IP 规则必须带 no-resolve 且不带策略')
+            net = ip_network(parts[1], strict=True)
+            if net.version != (4 if parts[0] == 'IP-CIDR' else 6):
+                raise ValueError('stash_direct_rules IP 规则类型与地址族不符')
+            continue
         if (len(parts) != 2 or not parts[1]
                 or parts[0] not in ('DOMAIN', 'DOMAIN-SUFFIX', 'DST-PORT')):
-            raise ValueError('stash_direct_rules 仅支持无策略的 DOMAIN / DOMAIN-SUFFIX / DST-PORT')
+            raise ValueError('stash_direct_rules 仅支持域名、目标端口和带 no-resolve 的 IP 网段')
         if parts[0] == 'DST-PORT' and not (parts[1].isdigit() and 1 <= int(parts[1]) <= 65535):
             raise ValueError('stash_direct_rules 目标端口必须为 1–65535')
     dns_servers = settings['stash_dns']['nameservers']
     validate_doh(dns_servers, 'stash_dns.nameservers')
+    magicdns = settings['stash_dns']['magicdns']
+    suffix = magicdns['suffix']
+    if not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.ts\.net', suffix):
+        raise ValueError('stash_dns.magicdns.suffix 必须为具体的 tailnet.ts.net 后缀')
+    if magicdns['nameserver'] != '100.100.100.100':
+        raise ValueError('MagicDNS 必须使用本机 Tailscale 的 100.100.100.100')
     direct_servers = settings['direct_dns']['nameservers']
     validate_doh(direct_servers, 'direct_dns.nameservers')
     sr_dns = settings['shadowrocket_dns']
@@ -92,9 +105,10 @@ def main():
     (ROOT / 'shadowrocket.conf').write_text('\n'.join(sr))
 
     st = [hdr, 'name: Roy 统一分流规则',
-          'desc: 统一分流 + 直连域名国内 DoH / 默认 Cloudflare 经代理；升级与策略组切换限制见 README',
+          'desc: 统一分流 + MagicDNS / 直连域名国内 DoH / 默认 Cloudflare 经代理；升级见 README',
           '# 此文件仅供 Stash；Shadowrocket 的 DNS 在 shadowrocket.conf 中单独生成。',
           '# 合并版启用后关闭旧的「Roy DNS 经代理」本地覆写，避免重复。',
+          '# MagicDNS 已合并；验证后关闭「Mini-Tailscale-MagicDNS」独立覆写。',
           '# DNS policy 按域名规则顺序匹配；Apple 按默认直连处理，不跟随策略组手动切换。',
           'dns:', '  follow-rule: true', '  skip-cert-verify: false',
           '  nameserver: #!replace']
@@ -103,11 +117,15 @@ def main():
            '  fallback: #!replace', '    []',
            '  # 完全替换旧 policy，防止继承的精确域名策略优先于本仓库集合。',
            '  nameserver-policy: #!replace']
+    st += ['    # 具体 tailnet 域名优先于下方业务集合，避免交给公共 DNS。',
+           f"    '+.{suffix}':", f"      - {magicdns['nameserver']}"]
     for r in cfg:
         servers = direct_servers if r['policy'] in ('direct', 'apple') else dns_servers
         for _, _, sid, *_ in sources(r):
             st.append(f"    'rule-set:{sid}':")
             st += [f'      - {server}' for server in servers]
+    st += ['  # 数组默认前插合并，保留基础配置已有的 Fake-IP 排除项。',
+           '  fake-ip-filter:', f"    - '+.{suffix}'"]
     st += ['', f'# 规则顺序：DNS 服务器 IP 指定出口 → Stash 专用直连 → {order}', '',
           '# 注意：覆写不定义策略组。基础配置（VIRCS 自建 / WgetCloud 等机场订阅）里已有同名组，重复定义会报 duplicate proxy name',
           'rule-providers:']
@@ -118,8 +136,10 @@ def main():
            '# 基础配置必须定义这 4 个策略组：🚀 节点选择 / 🎯 全球直连 / 🍎 苹果服务 / 🐟 漏网之鱼', 'rules:']
     st += ['  # 必须先于所有业务规则和 MATCH，确保 DNS 不依赖兜底组选择']
     st += [f'  - {rule}' for rule in dns_rules]
-    st += ['  # Tailscale 控制连接、STUN 与常用直连端口；不改变 DNS policy 或系统路由']
-    st += [f'  - {rule},DIRECT' for rule in direct_rules]
+    st += ['  # Tailscale 内网 / MagicDNS、控制连接、STUN 与常用端口；不修改系统路由']
+    for rule in direct_rules:
+        parts = rule.split(',')
+        st.append('  - ' + ','.join(parts[:2] + ['DIRECT'] + parts[2:]))
     for r in cfg:
         st.append(f"  # {r['label']}")
         st += [f'  - RULE-SET,{sid},{ST_POL[r["policy"]]}' for _, _, sid, *_ in sources(r)]

@@ -1,4 +1,18 @@
 # 仅验证 Stash 专用直连规则的匹配边界；false 表示继续原有业务规则。
+- {host: tail2bea5.ts.net, port: 443, direct: true}
+- {host: node.tail2bea5.ts.net, port: 8723, direct: true}
+- {host: muse-1.tail2bea5.ts.net, port: 22, direct: true}
+- {host: node.other-tailnet.ts.net, port: 443, direct: false}
+- {host: not-tail2bea5.ts.net, port: 443, direct: false}
+- {host: node.tail2bea5.ts.net.example.invalid, port: 443, direct: false}
+- {host: '100.100.100.100', port: 53, direct: true}
+- {host: '100.64.0.0', port: 443, direct: true}
+- {host: '100.127.255.255', port: 443, direct: true}
+- {host: '100.63.255.255', port: 443, direct: false}
+- {host: '100.128.0.0', port: 443, direct: false}
+- {host: 'fd7a:115c:a1e0::53', port: 53, direct: true}
+- {host: 'fd7a:115c:a1df::1', port: 443, direct: false}
+- {host: 'fd7a:115c:a1e1::1', port: 443, direct: false}
 - {host: tailscale.com, port: 443, direct: true}
 - {host: controlplane.tailscale.com, port: 443, direct: true}
 - {host: derp20.tailscale.com, port: 443, direct: true}

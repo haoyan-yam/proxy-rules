@@ -12,16 +12,25 @@ direct_dns:
     - https://223.6.6.6/dns-query
 
 # Stash 默认 DNS 经「🚀 节点选择」；域名 policy 按业务规则顺序生成。
-# 仅允许 HTTPS + IP 地址，避免解析 DNS 服务器域名产生循环依赖。
+# 普通常规上游仅允许 HTTPS + IP；MagicDNS 单独查询本机 Tailscale。
 stash_dns:
   nameservers:
     - https://1.1.1.1/dns-query
     - https://1.0.0.1/dns-query
+  # 独立 Tailscale 客户端保持运行，Use Tailscale DNS settings 关闭。
+  # 只处理自己的 tailnet，不能将全部 ts.net 或普通网站交给 Quad100。
+  magicdns:
+    suffix: tail2bea5.ts.net
+    nameserver: 100.100.100.100
 
 # 仅 Stash：DNS 服务器 IP 规则之后、业务规则之前，固定使用 DIRECT。
 # 不写入两端共用的个人规则，避免改变 Shadowrocket 内置 Tailscale 的现有行为。
 # 端口规则适用于所有发往这些目标端口的连接，并不限于某个进程。
 stash_direct_rules:
+  - IP-CIDR,100.100.100.100/32,no-resolve
+  - DOMAIN-SUFFIX,tail2bea5.ts.net
+  - IP-CIDR,100.64.0.0/10,no-resolve
+  - IP-CIDR6,fd7a:115c:a1e0::/48,no-resolve
   - DOMAIN-SUFFIX,tailscale.com
   - DST-PORT,3478
   - DST-PORT,41641

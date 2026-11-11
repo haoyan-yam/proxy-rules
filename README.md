@@ -44,26 +44,55 @@ Stash 在业务规则之前有四条 DNS 服务器 IP 规则：Cloudflare `1.1.1
 
 ## Stash 与独立 Tailscale 客户端共存
 
+### MagicDNS 已合并到统一覆写（2026-11-11）
+
+适用于独立 Tailscale 客户端连接到 `tail2bea5.ts.net` 的 Mac。Tailscale 保持运行，客户端的 **Use Tailscale DNS settings 保持关闭**，tailnet 的 MagicDNS 保持开启；普通网站继续使用原有 Stash DNS 分流。
+
+统一覆写直接包含 `+.tail2bea5.ts.net → 100.100.100.100` 的 `nameserver-policy`，并将该后缀加入 `fake-ip-filter`，返回真实内网地址。Fake-IP 排除列表使用数组合并，保留基础配置的其他排除项。只处理自己的 tailnet；共享设备使用其他后缀时需另行配置。该后缀来自 `rulesets.yaml` 的 `stash_dns.magicdns`。
+
+此前单独启用「Mini-Tailscale-MagicDNS」并放在统一覆写之前，会被统一覆写的 `nameserver-policy: #!replace` 覆盖。合并后不再依赖两份覆写的顺序，也不应通过移除 `#!replace` 来继承其他未知 DNS policy。
+
+更新步骤：
+
+1. 更新现有「Roy 统一分流规则」远程覆写，URL 不变；确认预览及生效配置同时含上述 tailnet policy 和 Fake-IP 排除项。
+2. 关闭临时的「Mini-Tailscale-MagicDNS」/「Mini Tailscale MagicDNS」覆写，仅保留统一覆写。不要停用独立 Tailscale 客户端。
+3. 在 macOS 执行 `dscacheutil -q host -a name muse-1.tail2bea5.ts.net`，预期为 `100.83.152.73`，而非 `198.18.x.x`。若仍返回旧结果，先检查运行配置是否已加载，再按需清理 Stash 和系统 DNS 缓存。
+4. 用 `dig @100.100.100.100 muse-1.tail2bea5.ts.net A` 检查 MagicDNS 本身，再分别验证在线设备的实际服务、普通国内网站及代理网站。解析成功不代表设备在线或业务端口可达。
+
+关闭 Stash 时，以上 Stash policy 不再生效；若需要此时仍解析完整 tailnet 域名，可在该 Mac 单独配置 `/etc/resolver/tail2bea5.ts.net` 指向 `100.100.100.100` 并验证。短设备名的搜索域也需要额外配置。本仓库不写系统 resolver、不切换 DNS 开关、不修改路由。
+
+本次合并前的 Mac 实测确认：Quad100 能返回内网地址，而旧 Stash policy 解析失败。仓库回归检查不等于合并后设备已加载或端到端访问已恢复。关闭接受 DNS 后，Quad100 对普通网站可能返回 SERVFAIL，不能将它设为全局上游，也不能据此推断开启接受 DNS 时的故障原因。
+
+若需回退本次 MagicDNS 合并，可使用[合并前固定版本](https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@5043a4d28a163f499174e476d82a89bd8ead3f4e/stash.stoverride)。旧版本不包含 MagicDNS 分流，需要恢复单独覆写并放在统一覆写之后，或另行安排内网解析。固定版本不会自动获得后续修复。
+
+参考：[Tailscale 手动配置 MagicDNS](https://tailscale.com/docs/reference/faq/dns-resolv-conf)、[Stash DNS](https://stash.wiki/features/dns-server)。
+
+### Tailscale 连接规则
+
 Stash 统一覆写已包含以下固定直连规则，位于四条 DNS 服务器 IP 规则之后、所有业务规则之前：
 
 ```yaml
+- IP-CIDR,100.100.100.100/32,DIRECT,no-resolve
+- DOMAIN-SUFFIX,tail2bea5.ts.net,DIRECT
+- IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+- IP-CIDR6,fd7a:115c:a1e0::/48,DIRECT,no-resolve
 - DOMAIN-SUFFIX,tailscale.com,DIRECT
 - DST-PORT,3478,DIRECT
 - DST-PORT,41641,DIRECT
 ```
 
-这些规则避免 Tailscale 域名连接、STUN 和常用直连端口被通用代理规则接管。端口规则不限进程或协议，会让发往这两个目标端口的其他连接也直连；NAT 映射到其他端口的连接不由这两条端口规则覆盖。四条 DNS IP 规则仍具有更高优先级，原 DNS policy 不变，不能据此宣称 Tailscale 的 DNS 查询也全部直连。
+这些规则让 tailnet 内层连接与 Quad100 固定直连，并避免 Tailscale 控制域名、STUN 和常用直连端口被通用代理规则接管。端口规则不限进程或协议，会让发往这两个目标端口的其他连接也直连；NAT 映射到其他端口的连接不由这两条端口规则覆盖。四条公共 DNS IP 规则仍具有更高优先级。内层 DIRECT 不保证外层 peer/DERP 连接直连，也不代表系统路由一定正确。
 
 规则只在 Stash 生成，Shadowrocket 配置与两端共享个人列表保持不变。手机内置 Tailscale 与 Mac 独立客户端的处理方式不同，不将 Mac 的修复直接套到手机。
 
 更新与验证：
 
 1. 在每台 Mac 更新现有「Roy 统一分流规则」远程覆写，URL 不变。GitHub 发布不代表设备已加载。
-2. 确认运行中的规则已包含上面三条，再关闭重复的「Mini Tailscale 直连测试」或「MacBook Air Tailscale 直连」本地覆写。验证前可先保留旧覆写；仅有文件预览不代表已有 UDP 会话已采用新规则。
+2. 确认运行中的规则已包含上面七条，再关闭重复的「Mini Tailscale 直连测试」或「MacBook Air Tailscale 直连」本地覆写。验证前可先保留旧覆写；仅有文件预览不代表已有 UDP 会话已采用新规则。
 3. 若使用 Stash TUN 与独立 Tailscale，检查目标 `100.x` 的系统路由是否交给 Tailscale。若「跳过 TUN」中的 `100.64.0.0/10` 导致它被送往物理网关，需在该设备单独修正；本覆写不会修改此设置。不要复制另一台 Mac 的 `utun` 编号或路由命令。
 4. 可用公网 IPv6 有助于建立直连，但由实际网络提供；本覆写不启用路由器 IPv6、不强制中继地区，也不保证一定打洞成功。更新后测试 Tailscale 路径及常用国内/代理网站；需要重连时由设备使用者操作。
 
-此处三条规则已在一台 Mac 与手机的场景中使用，IPv6 直连依赖另行启用的家中 IPv6。公司 Mac、其他网络及更新后的合并覆写仍需分别验收。回退本次规则合并可使用[更新前固定版本的 Stash 覆写](https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@1a3dc28802718f306bee57e58500a8bd75d2cfb7/stash.stoverride)；不要为撤回这三条规则改动手机配置或关闭已验证有效的路由修复。
+此前的三条控制域名/端口规则已在一台 Mac 与手机的场景中使用，IPv6 直连依赖另行启用的家中 IPv6。公司 Mac、其他网络及更新后的合并覆写仍需分别验收。回退本次规则合并可使用[更新前固定版本的 Stash 覆写](https://cdn.jsdelivr.net/gh/haoyan-yam/proxy-rules@1a3dc28802718f306bee57e58500a8bd75d2cfb7/stash.stoverride)；不要为撤回这三条规则改动手机配置或关闭已验证有效的路由修复。
 
 ## Stash DNS：行为、限制与升级
 
@@ -71,6 +100,7 @@ Stash 统一覆写已包含以下固定直连规则，位于四条 DNS 服务器
 
 | 用途 | DNS | 查询出口 |
 |---|---|---|
+| `tail2bea5.ts.net` 及其子域名 | `100.100.100.100` | 本机独立 Tailscale 客户端 |
 | 命中直连域名集合（如飞书、国内网站） | `https://223.5.5.5/dns-query`、`https://223.6.6.6/dns-query` | 直连 |
 | 命中代理域名集合或未命中任何域名集合 | `https://1.1.1.1/dns-query`、`https://1.0.0.1/dns-query` | 🚀 节点选择 |
 | Apple 域名集合 | 国内 AliDNS DoH | 直连，与 Apple 默认直连一致 |
@@ -90,14 +120,14 @@ Stash 统一覆写已包含以下固定直连规则，位于四条 DNS 服务器
 ### 兼容性与继承项
 
 - `rule-set:` DNS policy 要求 **Stash macOS 4.3+ / iOS 3.6+**。本机版本为 macOS 4.3.5；本次新增分流仍须检查设备实际加载与解析结果，不能把静态测试称为内核实测。旧版设备先升级再拉取。
-- 基础配置的 `default-nameserver`、`proxy-server-nameserver`、Hosts、Fake-IP、IPv6 等继续继承，其他覆写也可能再次改写 DNS。更换基础配置后仍需检查。
+- 基础配置的 `default-nameserver`、`proxy-server-nameserver`、Hosts、Fake-IP 其他排除项、IPv6 等继续继承（本覆写仅增加 tailnet 的 Fake-IP 排除），其他覆写也可能再次改写 DNS。更换基础配置后仍需检查。
 - 使用域名节点时，应保证独立可用的节点引导解析，避免代理与 DNS 循环依赖；本次不统一更改这些引导项。本机此前核验的节点地址为 IP。
 - 节点、策略组、业务规则顺序保持原状；仓库不包含订阅凭证、节点密码、设备密钥或个人日志。
 
 ### 更新步骤
 
 1. 在 Stash 更新同一个「Roy 统一分流规则」远程覆写。预览应有 `nameserver-policy`、空 `fallback` 和最前面的四条 DNS IP 规则。
-2. 如果还启用了旧的「Roy DNS 经代理」本地覆写，将其关闭，仅保留合并后的统一覆写；无需再安装第二份 DNS 覆写。
+2. 如果还启用了旧的「Roy DNS 经代理」本地覆写，将其关闭；同样关闭临时 MagicDNS 覆写，仅保留合并后的统一覆写；无需再安装第二份 DNS 覆写。
 3. 检查最终生效配置，再测试飞书图片及常用代理网站。**不需要退出 Mac Stash**。其他设备各自更新；GitHub 发布不等于设备已经应用。
 4. 若 CDN 尚未刷新，稍后更新或使用上方缓存刷新地址。公司内网使用者先核对自定义 DNS 策略。
 
@@ -147,6 +177,7 @@ Stash 统一覆写已包含以下固定直连规则，位于四条 DNS 服务器
 | 加/删某个域名、IP | `rules/personal_*.list` | `python3 scripts/check.py`，然后 push |
 | 规则顺序、公共规则集、策略 | `rulesets.yaml` | `python3 scripts/build.py`，再 `check.py`，然后 push |
 | 两端直连 DNS 上游 | `rulesets.yaml` 的 `direct_dns` | 同步 DNS 回归期望和 README，运行 build/check；两端分别更新 |
+| Stash MagicDNS | `rulesets.yaml` 的 `stash_dns.magicdns` 与 `stash_direct_rules` | 同步 DNS/连接边界测试；仅更新 Stash 覆写并关闭临时 MagicDNS 覆写 |
 | Stash 常规 DNS 上游 | `rulesets.yaml` 的 `stash_dns` | 同步更新 `scripts/check.py` 的 DNS 回归期望，运行 build/check；仅更新 Stash 覆写 |
 | Shadowrocket 网站 / 节点 DNS | `rulesets.yaml` 的 `shadowrocket_dns` | 同步更新 DNS 回归期望和 README，运行 build/check；iPhone/iPad 分别更新配置并验收 |
 | 节点 | 各客户端本地 | 不经过仓库 |

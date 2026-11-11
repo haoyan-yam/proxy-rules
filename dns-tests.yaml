@@ -1,4 +1,12 @@
 # Stash 实际域名规则源 + policy 的预期解析器；Shadowrocket 字段另由 check.py 验证。
+tail2bea5.ts.net: magicdns
+node.tail2bea5.ts.net: magicdns
+muse-1.tail2bea5.ts.net: magicdns
+roy-mackbookair-m3.tail2bea5.ts.net: magicdns
+# ts.net 属于 Lan，但其他 tailnet 和相似后缀不能误送本机 MagicDNS。
+node.other-tailnet.ts.net: domestic
+not-tail2bea5.ts.net: domestic
+node.tail2bea5.ts.net.example.invalid: cloudflare
 www.feishu.cn: domestic
 open.feishu.cn: domestic
 s1-imfile.feishucdn.com: domestic
